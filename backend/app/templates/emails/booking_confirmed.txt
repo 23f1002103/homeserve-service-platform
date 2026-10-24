@@ -1,0 +1,11 @@
+HomeServe booking confirmed
+
+Hello {{ customer_name }},
+
+Your payment was successful and booking #{{ booking.id }} is confirmed.
+Service: {{ service_name }}
+Scheduled: {{ booking.scheduled_for.strftime('%d %b %Y, %I:%M %p') }}
+Address: {{ booking.service_address }}
+Paid: INR {{ amount }}
+
+You can follow its status and download your invoice from My Bookings.

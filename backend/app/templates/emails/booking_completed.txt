@@ -1,0 +1,9 @@
+HomeServe job completed
+
+Hello {{ customer_name }},
+
+{{ professional_name }} marked booking #{{ booking.id }} as completed.
+Service: {{ service_name }}
+Amount paid: INR {{ amount }}
+
+Please open My Bookings to rate the professional and share your feedback.

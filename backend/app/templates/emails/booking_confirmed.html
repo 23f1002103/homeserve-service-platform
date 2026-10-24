@@ -1,0 +1,15 @@
+<!doctype html>
+<html><body style="margin:0;background:#f3f0e8;font-family:Arial,sans-serif;color:#1d2923">
+  <div style="max-width:620px;margin:30px auto;background:#fff;border-top:7px solid #1f5b47;padding:34px">
+    <p style="font-size:12px;letter-spacing:2px;color:#9b5135">HOMESERVE · BOOKING CONFIRMED</p>
+    <h1 style="font-family:Georgia,serif;font-size:34px">We have received your booking.</h1>
+    <p>Hello {{ customer_name }}, your payment was successful and booking <strong>#{{ booking.id }}</strong> is now available to matching professionals.</p>
+    <div style="margin:25px 0;padding:20px;background:#eef3ef">
+      <p><strong>Service:</strong> {{ service_name }}</p>
+      <p><strong>Scheduled:</strong> {{ booking.scheduled_for.strftime('%d %b %Y, %I:%M %p') }}</p>
+      <p><strong>Address:</strong> {{ booking.service_address }}</p>
+      <p><strong>Paid:</strong> INR {{ amount }}</p>
+    </div>
+    <p>You can follow the booking status and download your invoice from My Bookings.</p>
+  </div>
+</body></html>

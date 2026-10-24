@@ -1,0 +1,11 @@
+HomeServe one-hour job reminder
+
+Hello {{ professional_name }},
+
+Booking #{{ booking.id }} is scheduled within the next hour.
+Service: {{ service_name }}
+Customer: {{ customer_name }}
+Scheduled: {{ booking.scheduled_for.strftime('%d %b %Y, %I:%M %p') }}
+Address: {{ booking.service_address }}
+
+Open your Jobs page for the customer location and Google Maps directions.

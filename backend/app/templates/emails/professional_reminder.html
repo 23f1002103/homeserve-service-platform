@@ -1,0 +1,15 @@
+<!doctype html>
+<html><body style="margin:0;background:#edf1ed;font-family:Arial,sans-serif;color:#1d2923">
+  <div style="max-width:620px;margin:30px auto;background:#fff;border-top:7px solid #1f5b47;padding:34px">
+    <p style="font-size:12px;letter-spacing:2px;color:#a95331">HOMESERVE · ONE-HOUR REMINDER</p>
+    <h1 style="font-family:Georgia,serif;font-size:34px">Your next job starts soon.</h1>
+    <p>Hello {{ professional_name }}, booking <strong>#{{ booking.id }}</strong> is scheduled within the next hour.</p>
+    <div style="margin:25px 0;padding:20px;background:#eef3ef">
+      <p><strong>Service:</strong> {{ service_name }}</p>
+      <p><strong>Customer:</strong> {{ customer_name }}</p>
+      <p><strong>Scheduled:</strong> {{ booking.scheduled_for.strftime('%d %b %Y, %I:%M %p') }}</p>
+      <p><strong>Address:</strong> {{ booking.service_address }}</p>
+    </div>
+    <p>Open your Jobs page for the customer location and Google Maps directions.</p>
+  </div>
+</body></html>

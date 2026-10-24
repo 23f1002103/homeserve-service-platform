@@ -1,0 +1,13 @@
+<!doctype html>
+<html><body style="margin:0;background:#f3f0e8;font-family:Arial,sans-serif;color:#1d2923">
+  <div style="max-width:620px;margin:30px auto;background:#fff;border-top:7px solid #a95331;padding:34px">
+    <p style="font-size:12px;letter-spacing:2px;color:#1f5b47">HOMESERVE · WORK COMPLETED</p>
+    <h1 style="font-family:Georgia,serif;font-size:34px">Your home service is complete.</h1>
+    <p>Hello {{ customer_name }}, {{ professional_name }} marked booking <strong>#{{ booking.id }}</strong> as completed.</p>
+    <div style="margin:25px 0;padding:20px;background:#f4eee8">
+      <p><strong>Service:</strong> {{ service_name }}</p>
+      <p><strong>Amount paid:</strong> INR {{ amount }}</p>
+    </div>
+    <p>Please open My Bookings to rate the professional and share your feedback.</p>
+  </div>
+</body></html>
