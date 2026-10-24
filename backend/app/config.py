@@ -7,13 +7,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class Config:
-    """Configuration shared by the HomeServe Flask application."""
-
-    SQLALCHEMY_DATABASE_URI = os.getenv(
+def database_url():
+    """Return a SQLAlchemy URL that explicitly uses the installed psycopg driver."""
+    url = os.getenv(
         "DATABASE_URL",
         "postgresql+psycopg://postgres:postgres@localhost:5432/homeserve",
     )
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
+class Config:
+    """Configuration shared by the HomeServe Flask application."""
+
+    SQLALCHEMY_DATABASE_URI = database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")

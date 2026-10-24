@@ -158,6 +158,40 @@ Build the frontend from the `frontend` directory:
 npm run build
 ```
 
+## Railway deployment
+
+The root `Dockerfile` builds Vue and serves it through the production Flask
+application. This keeps the frontend and API on one HTTPS domain.
+
+Create these four Railway services in one project:
+
+1. **HomeServe Web** — connect this GitHub repository and keep the Dockerfile's default start command.
+2. **Postgres** — add Railway PostgreSQL.
+3. **Redis** — add Railway Redis.
+4. **HomeServe Jobs** — connect the same repository and override its start command with:
+
+```text
+celery -A make_celery worker --beat --loglevel INFO
+```
+
+Keep the Jobs service at one replica so only one Beat scheduler runs.
+
+Set these reference variables on both code services:
+
+```text
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+CELERY_BROKER_URL=${{Redis.REDIS_URL}}
+CELERY_RESULT_BACKEND=${{Redis.REDIS_URL}}
+```
+
+Also set `JWT_SECRET_KEY`, the `ADMIN_*` values, `PLATFORM_COMMISSION_PERCENT`,
+and the `MAIL_*` values from `.env.example`. Never paste the local `.env` file
+into GitHub.
+
+For the Web service, generate a public domain and configure `/api/health` as
+the health-check path. PostgreSQL migrations and the idempotent administrator
+seed run automatically when the Web service starts.
+
 ## Security notes
 
 - Passwords are stored as hashes, never as plain text.
