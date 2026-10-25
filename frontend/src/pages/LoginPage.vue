@@ -18,11 +18,7 @@ async function finishAuthentication(data) {
   if (data.user.role === 'admin') {
     await router.push('/admin/dashboard')
   } else if (data.user.role === 'customer') {
-    if (data.user.profile_complete === false) {
-      await router.push({ name: 'customer-profile', query: { complete: '1', next: '/customer/dashboard' } })
-    } else {
-      await router.push('/customer/dashboard')
-    }
+    await router.push('/customer/dashboard')
   } else if (data.user.role === 'professional') {
     if (data.user.approval_status === 'approved') {
       await router.push('/professional/dashboard')

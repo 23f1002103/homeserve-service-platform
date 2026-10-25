@@ -12,10 +12,7 @@ const servicesLoading = ref(false)
 async function finishGoogleRegistration(data) {
   localStorage.setItem('access_token', data.access_token)
   localStorage.setItem('user', JSON.stringify(data.user))
-  await router.push({
-    name: 'customer-profile',
-    query: { complete: '1', next: '/customer/dashboard' },
-  })
+  await router.push('/customer/dashboard')
 }
 
 function showGoogleError(message) {

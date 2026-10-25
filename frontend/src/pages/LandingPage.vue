@@ -98,16 +98,26 @@ onMounted(loadLandingPage)
         </section>
 
         <section id="why-us" class="section trust-section" aria-labelledby="trust-title">
-          <div><p class="eyebrow eyebrow--light">Why HomeServe</p><h2 id="trust-title">Less searching.<br />More living.</h2></div>
-          <div class="highlight-grid">
-            <article v-for="highlight in landingData.highlights" :key="highlight.value">
-              <strong>{{ highlight.value }}</strong><span>{{ highlight.label }}</span>
-            </article>
+          <div class="trust-intro">
+            <p class="eyebrow eyebrow--light">Why HomeServe</p>
+            <h2 id="trust-title">Care, without<br />the guesswork.</h2>
+            <p>From the first click to the completed job, every step tells you what happens next.</p>
+            <span class="trust-signature"><b>HS</b> Household help, clearly booked.</span>
           </div>
+          <ol class="service-journey">
+            <li v-for="(highlight, index) in landingData.highlights" :key="highlight.value">
+              <span class="journey-marker" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+              <div>
+                <small>{{ highlight.value }}</small>
+                <h3>{{ highlight.label }}</h3>
+                <p>{{ highlight.description }}</p>
+              </div>
+            </li>
+          </ol>
         </section>
       </template>
     </main>
 
-    <footer class="site-footer"><span>© 2026 HomeServe</span><span>Built with Flask + Vue</span></footer>
+    <footer class="site-footer"><span>© 2026 HomeServe</span><span>Care for homes. Respect for your time.</span></footer>
   </div>
 </template>

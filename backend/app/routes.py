@@ -54,9 +54,30 @@ def landing_page():
                 for service in services
             ],
             "highlights": [
-                {"value": "Verified", "label": "service professionals"},
-                {"value": "Upfront", "label": "service pricing"},
-                {"value": "Simple", "label": "online booking"},
+                {
+                    "value": "Verified",
+                    "label": "Professionals you can identify",
+                    "description": (
+                        "Every professional profile is reviewed by the "
+                        "administrator before they can accept work."
+                    ),
+                },
+                {
+                    "value": "Upfront",
+                    "label": "A price before you continue",
+                    "description": (
+                        "See the base service price before creating your "
+                        "request or entering the payment demo."
+                    ),
+                },
+                {
+                    "value": "Simple",
+                    "label": "One clear booking journey",
+                    "description": (
+                        "Book, follow job updates, download your invoice, "
+                        "and leave a review from one account."
+                    ),
+                },
             ],
         }
     )

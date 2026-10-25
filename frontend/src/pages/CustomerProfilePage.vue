@@ -58,7 +58,8 @@ onMounted(loadProfile)
 <template>
   <div class="workbench customer-workbench"><CustomerHeader current="profile" /><main class="workbench-content role-section-page">
     <header class="role-section-heading"><div><p class="workbench-label">HOME PROFILE</p><h1>Your account and<br />service address.</h1></div><p>This address will help prefill future booking requests.</p></header>
-    <p v-if="route.query.complete === '1' || profile?.profile_complete === false" class="profile-completion-note">Complete these details before booking a service. Your phone number is shared only with the professional who accepts your job.</p>
+    <p v-if="route.query.reason === 'booking'" class="profile-completion-note">Your booking is waiting. Add your contact and address details once, then we’ll take you back to the service you selected. Your phone number is shared only with the professional who accepts your job.</p>
+    <p v-else-if="route.query.complete === '1' || profile?.profile_complete === false" class="profile-completion-note">Complete these details before booking a service. You can still browse your dashboard and services before doing this.</p>
     <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
     <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
     <section v-if="profile" class="detail-sheet customer-detail-sheet">

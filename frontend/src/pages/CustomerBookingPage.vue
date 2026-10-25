@@ -110,7 +110,7 @@ async function loadBookingPage() {
     if (profile.value.profile_complete === false) {
       await router.replace({
         name: 'customer-profile',
-        query: { complete: '1', next: route.fullPath },
+        query: { complete: '1', reason: 'booking', next: route.fullPath },
       })
       return
     }
