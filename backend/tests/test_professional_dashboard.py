@@ -287,6 +287,14 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         completed = self.client.patch(
             f"/api/professional/jobs/{job_id}/complete", headers=headers
         )
+        review_prompt = self.client.get(
+            "/api/customer/review-prompt",
+            headers={"Authorization": f"Bearer {customer_token}"},
+        )
+        review_prompt_again = self.client.get(
+            "/api/customer/review-prompt",
+            headers={"Authorization": f"Bearer {customer_token}"},
+        )
         accepted_after_completion = self.client.patch(
             f"/api/professional/jobs/{second_job_id}/accept", headers=headers
         )
@@ -381,6 +389,14 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             assigned.get_json()["jobs"][0]["directions_url"],
         )
         self.assertEqual(completed.status_code, 200)
+        self.assertEqual(review_prompt.status_code, 200)
+        self.assertEqual(
+            review_prompt.get_json()["review_prompt"]["booking_id"], job_id
+        )
+        self.assertEqual(
+            review_prompt.get_json()["review_prompt"]["professional"], "test-pro"
+        )
+        self.assertIsNone(review_prompt_again.get_json()["review_prompt"])
         self.assertEqual(reviewed.status_code, 201)
         self.assertEqual(accepted_after_completion.status_code, 200)
         self.assertEqual(profile_response.status_code, 200)

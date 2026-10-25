@@ -133,6 +133,42 @@ def unread_notification():
     }, 200
 
 
+@customer.get("/review-prompt")
+@roles_required("customer")
+def next_review_prompt():
+    """Return each completed, unreviewed booking at most once as an app prompt."""
+    user_id = int(get_jwt_identity())
+    profile = db.session.scalar(
+        db.select(Customer).where(Customer.user_id == user_id)
+    )
+    if profile is None:
+        return {"message": "Customer profile not found"}, 404
+
+    booking = db.session.scalar(
+        db.select(ServiceRequest)
+        .where(
+            ServiceRequest.customer_id == profile.id,
+            ServiceRequest.status == "completed",
+            ServiceRequest.professional_id.is_not(None),
+            ServiceRequest.review_prompted_at.is_(None),
+            ~ServiceRequest.reviews.any(),
+        )
+        .order_by(ServiceRequest.completed_at.asc(), ServiceRequest.id.asc())
+    )
+    if booking is None:
+        return {"review_prompt": None}, 200
+
+    booking.review_prompted_at = datetime.now()
+    db.session.commit()
+    return {
+        "review_prompt": {
+            "booking_id": booking.id,
+            "service": booking.service_type.name,
+            "professional": booking.professional.user.username,
+        }
+    }, 200
+
+
 @customer.patch("/notifications/<int:notification_id>/read")
 @roles_required("customer")
 def mark_notification_read(notification_id):

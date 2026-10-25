@@ -148,6 +148,7 @@ class ServiceRequest(db.Model):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
     completed_at = db.Column(db.DateTime, nullable=True)
+    review_prompted_at = db.Column(db.DateTime, nullable=True)
     reminder_sent_at = db.Column(db.DateTime, nullable=True)
     scheduled_for=db.Column(db.DateTime, nullable=True)
     service_address=db.Column(db.String(200), nullable=False)
