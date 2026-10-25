@@ -59,6 +59,24 @@ class LocationTestCase(unittest.TestCase):
         )
         self.assertIn("bigdatacloud.net", urlopen.call_args_list[1].args[0].full_url)
 
+    @patch("app.location.urlopen")
+    def test_falls_back_when_nominatim_returns_an_error_document(self, urlopen):
+        urlopen.side_effect = [
+            json_response({"error": "Unable to geocode"}),
+            json_response(
+                {
+                    "locality": "Chintamani",
+                    "principalSubdivision": "Karnataka",
+                    "postcode": "563125",
+                }
+            ),
+        ]
+
+        location = get_address_from_coordinates(13.4, 78.05)
+
+        self.assertEqual(location["city"], "Chintamani")
+        self.assertEqual(urlopen.call_count, 2)
+
     @patch("app.location.urlopen", side_effect=URLError("all providers unavailable"))
     def test_returns_none_when_all_providers_are_unavailable(self, urlopen):
         self.assertIsNone(get_address_from_coordinates(13.4, 78.05))

@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 
 from flask import Blueprint, jsonify
@@ -89,6 +90,7 @@ def health_check():
     return jsonify(
         {
             "message": "HomeServe API is connected",
+            "revision": os.getenv("RENDER_GIT_COMMIT", "local")[:7],
             "service": "homeserve-api",
             "status": "ok",
             "timestamp": datetime.now(UTC).isoformat(),

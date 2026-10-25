@@ -47,6 +47,7 @@ class ApiRoutesTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(body["status"], "ok")
         self.assertEqual(body["service"], "homeserve-api")
+        self.assertEqual(body["revision"], "local")
         self.assertIn("timestamp", body)
 
     def test_landing_page_content(self):

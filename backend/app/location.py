@@ -47,6 +47,8 @@ def _nominatim_address(latitude, longitude):
         return None
 
     address = result.get("address", {})
+    if not address:
+        return None
     city = (
         address.get("city")
         or address.get("town")
@@ -80,6 +82,8 @@ def _big_data_cloud_address(latitude, longitude):
     city = (result.get("city") or result.get("locality") or "").strip()
     state = (result.get("principalSubdivision") or "").strip()
     pin_code = (result.get("postcode") or "").strip()
+    if not any((city, state, pin_code)):
+        return None
     full_address = ", ".join(value for value in (city, state, pin_code) if value)
     return {
         "city": city,
