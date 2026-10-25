@@ -24,3 +24,4 @@ frontend/src/pages/image.png
 # Celery Beat local schedule files
 celerybeat-schedule*
 
+.neon

@@ -21,5 +21,6 @@ COPY --from=frontend-build /frontend/dist ./backend/app/static/
 
 WORKDIR /app/backend
 
-# Railway supplies PORT. The fallback makes the same image runnable locally.
-CMD ["sh", "-c", "flask --app app:create_app db upgrade && exec gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --threads 4 wsgi:app"]
+# Use Neon's direct connection for schema migrations. Gunicorn keeps using the
+# pooled DATABASE_URL for normal application requests.
+CMD ["sh", "-c", "if [ -n \"${DATABASE_URL_UNPOOLED:-}\" ]; then DATABASE_URL=\"$DATABASE_URL_UNPOOLED\" flask --app app:create_app db upgrade; else flask --app app:create_app db upgrade; fi && exec gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --threads 4 wsgi:app"]
