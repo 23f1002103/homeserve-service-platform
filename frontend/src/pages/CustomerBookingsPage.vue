@@ -31,6 +31,15 @@ watch([filter, searchQuery], () => { resetPage(); expandedBookingId.value = null
 const openBookingCount = computed(() => bookings.value.filter(item => ['pending', 'accepted'].includes(item.status)).length)
 function formatDate(value) { return value ? new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Not scheduled' }
 function paymentLabel(value) { return value === 'demo_upi' ? 'HomeServe Demo UPI' : 'Payment method unavailable' }
+function professionalInitial(name) { return String(name || 'P').trim().charAt(0).toUpperCase() }
+function experienceLabel(years) {
+  if (years === null || years === undefined) return 'Experience not added'
+  return `${years} ${years === 1 ? 'year' : 'years'} experience`
+}
+function ratingLabel(professional) {
+  if (professional.average_rating === null) return 'New professional · No reviews yet'
+  return `${professional.average_rating} / 5 · ${professional.review_count} ${professional.review_count === 1 ? 'review' : 'reviews'}`
+}
 function toggleBooking(bookingId) { expandedBookingId.value = expandedBookingId.value === bookingId ? null : bookingId }
 function startReview(booking) { reviewingId.value = booking.id; rating.value = 5; reviewComment.value = ''; expandedBookingId.value = booking.id }
 async function loadBookings() {
@@ -131,6 +140,13 @@ onMounted(loadBookings)
 
         <div v-if="expandedBookingId === booking.id" class="booking-compact-details">
           <div class="booking-detail-copy"><div><small>PROBLEM DETAILS</small><p>{{ booking.description || 'No extra details provided.' }}</p></div><div><small>SERVICE ADDRESS</small><p>{{ booking.address }}</p></div><div><small>PAYMENT</small><p>{{ paymentLabel(booking.payment_method) }} · {{ booking.payment_status || 'pending' }}</p></div></div>
+          <section v-if="booking.professional_details" class="assigned-professional-card">
+            <span class="assigned-professional-avatar">{{ professionalInitial(booking.professional_details.name) }}</span>
+            <div class="assigned-professional-identity"><small>ASSIGNED PROFESSIONAL</small><strong>{{ booking.professional_details.name }}</strong><p>{{ booking.service }} specialist</p></div>
+            <div class="assigned-professional-facts"><span><small>EXPERIENCE</small><strong>{{ experienceLabel(booking.professional_details.experience_years) }}</strong></span><span><small>CUSTOMER RATING</small><strong>{{ ratingLabel(booking.professional_details) }}</strong></span></div>
+            <a v-if="booking.professional_details.phone_number" :href="`tel:${booking.professional_details.phone_number}`"><span>Call professional</span><strong>{{ booking.professional_details.phone_number }}</strong></a>
+            <span v-else class="assigned-professional-no-phone">Contact number not added</span>
+          </section>
           <div v-if="booking.payment_status === 'completed'" class="booking-document-row"><div><strong>Payment invoice</strong><small>A PDF copy for your records.</small></div><button type="button" :disabled="downloadingInvoiceId === booking.id" @click="downloadInvoice(booking)">{{ downloadingInvoiceId === booking.id ? 'Preparing…' : 'Download PDF' }}</button></div>
           <div v-if="booking.status === 'cancelled'" class="booking-cancelled-note"><span>×</span><div><strong>Booking cancelled</strong><p>No professional can accept this request. {{ booking.payment_status === 'refunded' ? 'The demo payment is marked as refunded.' : '' }}</p></div></div>
           <div v-else class="booking-progress" :class="`booking-progress--${booking.status}`"><span>Requested</span><i></i><span>Accepted</span><i></i><span>Completed</span></div>

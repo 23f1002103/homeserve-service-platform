@@ -428,6 +428,44 @@ def bookings():
         .order_by(ServiceRequest.created_at.desc())
     ).all()
 
+    professional_ids = {
+        booking.professional_id
+        for booking in booking_list
+        if booking.professional_id is not None
+    }
+    rating_by_professional = {}
+    if professional_ids:
+        rating_rows = db.session.execute(
+            db.select(
+                ServiceRequest.professional_id,
+                db.func.avg(Review.rating),
+                db.func.count(Review.id),
+            )
+            .join(Review, Review.service_request_id == ServiceRequest.id)
+            .where(ServiceRequest.professional_id.in_(professional_ids))
+            .group_by(ServiceRequest.professional_id)
+        ).all()
+        rating_by_professional = {
+            professional_id: (round(float(average_rating), 1), review_count)
+            for professional_id, average_rating, review_count in rating_rows
+        }
+
+    def assigned_professional(booking):
+        if booking.professional is None:
+            return None
+
+        average_rating, review_count = rating_by_professional.get(
+            booking.professional_id,
+            (None, 0),
+        )
+        return {
+            "name": booking.professional.user.username,
+            "phone_number": booking.professional.user.phone_number,
+            "experience_years": booking.professional.experience_years,
+            "average_rating": average_rating,
+            "review_count": review_count,
+        }
+
     return {
         "bookings": [
             {
@@ -438,6 +476,7 @@ def bookings():
                     if booking.professional
                     else None
                 ),
+                "professional_details": assigned_professional(booking),
                 "status": booking.status,
                 "scheduled_for": (
                     booking.scheduled_for.isoformat()

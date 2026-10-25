@@ -22,6 +22,7 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             user = User(
                 username="test-pro",
                 email="pro@example.com",
+                phone_number="9876543210",
                 password_hash="not-used-in-this-test",
                 role="professional",
             )
@@ -36,6 +37,7 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
                     state="Karnataka",
                     pin_code="560001",
                     service_type_id=service_type.id,
+                    experience_years=5,
                 )
             )
             db.session.commit()
@@ -227,6 +229,10 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         accepted = self.client.patch(
             f"/api/professional/jobs/{job_id}/accept", headers=headers
         )
+        customer_bookings = self.client.get(
+            "/api/customer/bookings",
+            headers={"Authorization": f"Bearer {customer_token}"},
+        )
         notification_response = self.client.get(
             "/api/customer/notifications/unread",
             headers={"Authorization": f"Bearer {customer_token}"},
@@ -307,6 +313,18 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(len(available.get_json()["available_jobs"]), 2)
         self.assertNotIn("directions_url", available.get_json()["available_jobs"][0])
         self.assertEqual(accepted.status_code, 200)
+        self.assertEqual(customer_bookings.status_code, 200)
+        assigned_professional = next(
+            booking["professional_details"]
+            for booking in customer_bookings.get_json()["bookings"]
+            if booking["id"] == job_id
+        )
+        self.assertEqual(assigned_professional["name"], "test-pro")
+        self.assertEqual(assigned_professional["phone_number"], "9876543210")
+        self.assertEqual(assigned_professional["experience_years"], 5)
+        self.assertEqual(assigned_professional["review_count"], 0)
+        self.assertNotIn("email", assigned_professional)
+        self.assertNotIn("address", assigned_professional)
         self.assertEqual(notification_response.status_code, 200)
         self.assertIn(
             "accepted your Plumbing booking",

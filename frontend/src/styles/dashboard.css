@@ -682,6 +682,18 @@
 .booking-detail-copy { display: grid; grid-template-columns: 1.3fr 1fr 0.8fr; gap: 35px; padding: 22px 0; border-top: 1px solid #d0d4cf; }
 .booking-detail-copy > div { display: grid; gap: 8px; align-content: start; }
 .booking-detail-copy p { margin: 0; color: #4f5d56; font-size: 0.76rem; line-height: 1.55; }
+.assigned-professional-card { display: grid; grid-template-columns: 48px minmax(145px, 0.65fr) minmax(260px, 1fr) auto; gap: 18px; align-items: center; margin: 0 0 20px; padding: 15px 17px; border: 1px solid #afbeb5; background: #eaf1ec; }
+.assigned-professional-avatar { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; color: #f8f5ed; background: #244f3f; font: 1.15rem Georgia, serif; }
+.assigned-professional-identity { display: grid; gap: 3px; }
+.assigned-professional-identity > strong { color: #1f4437; font: 1.02rem Georgia, serif; }
+.assigned-professional-identity p { margin: 0; color: #69776f; font-size: 0.66rem; }
+.assigned-professional-facts { display: grid; grid-template-columns: repeat(2, minmax(115px, 1fr)); gap: 18px; padding-left: 18px; border-left: 1px solid #bdc9c1; }
+.assigned-professional-facts > span { display: grid; gap: 5px; }
+.assigned-professional-facts strong { color: #41534a; font-size: 0.68rem; }
+.assigned-professional-card > a { display: grid; gap: 3px; padding: 10px 13px; border: 1px solid #315d4d; color: #fff; background: #315d4d; text-decoration: none; }
+.assigned-professional-card > a span { font-size: 0.58rem; font-weight: 850; text-transform: uppercase; }
+.assigned-professional-card > a strong { font-size: 0.67rem; }
+.assigned-professional-no-phone { color: #748079; font-size: 0.65rem; }
 .booking-progress { display: flex; align-items: center; margin-bottom: 20px; color: #8a938e; font-size: 0.58rem; font-weight: 800; text-transform: uppercase; }
 .booking-progress i { flex: 1; height: 2px; margin-inline: 8px; background: #ccd1cd; }
 .booking-progress:not(.booking-progress--payment_pending) span:first-child,
@@ -796,6 +808,9 @@
   .booking-compact-details { padding-left: 18px; }
   .booking-detail-copy { grid-template-columns: repeat(2, 1fr); }
   .booking-detail-copy > div:first-child { grid-column: 1 / -1; }
+  .assigned-professional-card { grid-template-columns: 48px minmax(145px, 0.8fr) 1fr; }
+  .assigned-professional-card > a,
+  .assigned-professional-no-phone { grid-column: 2 / -1; justify-self: start; }
   .available-job-list > article { grid-template-columns: 120px 1fr; }
   .available-job-list footer { grid-column: 2; grid-row: 2; grid-template-columns: 1fr auto auto; align-items: center; text-align: left; }
   .demo-pay-body { gap: 25px; padding: 30px; }
@@ -912,6 +927,11 @@
   .booking-compact-details { padding: 0 12px 22px; }
   .booking-detail-copy { grid-template-columns: 1fr; gap: 18px; }
   .booking-detail-copy > div:first-child { grid-column: auto; }
+  .assigned-professional-card { grid-template-columns: 42px 1fr; gap: 14px; }
+  .assigned-professional-avatar { width: 40px; height: 40px; }
+  .assigned-professional-facts { grid-column: 1 / -1; grid-template-columns: 1fr; padding: 14px 0 0; border-top: 1px solid #bdc9c1; border-left: 0; }
+  .assigned-professional-card > a,
+  .assigned-professional-no-phone { grid-column: 1 / -1; }
   .booking-progress { font-size: 0.5rem; }
   .submitted-review { flex-direction: column; gap: 9px; }
   .booking-cancel-action { align-items: stretch; flex-direction: column; }
