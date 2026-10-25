@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ActionNoticeModal from '../components/ActionNoticeModal.vue'
 import CustomerHeader from '../components/CustomerHeader.vue'
+import demoQrImage from '../assets/demo-payment-qr.svg'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,7 +32,6 @@ const paymentScreen = ref('ready')
 const paymentMethod = ref('qr')
 const demoUpiAddress = ref('')
 const secondsLeft = ref(300)
-const qrCells = Array.from({ length: 169 }, (_, index) => index)
 let timerId
 
 const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
@@ -58,18 +58,6 @@ function startDemoTimer() {
       paymentScreen.value = 'expired'
     }
   }, 1000)
-}
-
-function qrCellActive(index) {
-  const row = Math.floor(index / 13)
-  const column = index % 13
-  const finder = (top, left) => {
-    const localRow = row - top
-    const localColumn = column - left
-    if (localRow < 0 || localRow > 4 || localColumn < 0 || localColumn > 4) return false
-    return localRow === 0 || localRow === 4 || localColumn === 0 || localColumn === 4 || (localRow === 2 && localColumn === 2)
-  }
-  return finder(0, 0) || finder(0, 8) || finder(8, 0) || ((row * 7 + column * 3 + row * column) % 5 < 2)
 }
 
 async function completeDemoPayment(result) {
@@ -371,7 +359,7 @@ onUnmounted(() => clearInterval(timerId))
 
                   <div v-if="paymentMethod === 'qr'" class="gateway-method-content gateway-qr-content">
                     <div class="gateway-method-heading"><h2>Scan QR to pay</h2><p>Open any UPI app and scan this demo code</p></div>
-                    <div class="demo-qr-wrap"><div class="demo-qr" aria-label="Decorative demo QR code"><i v-for="cell in qrCells" :key="cell" :class="{ active: qrCellActive(cell) }"></i><span>HS</span></div><small>DEMO QR · NOT SCANNABLE</small></div>
+                    <div class="demo-qr-wrap"><img class="demo-qr" :src="demoQrImage" alt="Decorative fake QR code for the HomeServe payment demo" /><small>DEMO QR · NOT SCANNABLE</small></div>
                     <div class="gateway-upi-apps"><span>G Pay</span><span>PhonePe</span><span>Paytm</span><span>BHIM</span></div>
                     <button type="button" class="gateway-primary-action" @click="completeDemoPayment('success')">I have completed the payment</button>
                   </div>
