@@ -108,7 +108,10 @@ class CustomerDashboardTestCase(unittest.TestCase):
             json={
                 "service_type_id": service_id,
                 "scheduled_for": "2099-01-20T10:30",
-                "service_address": "12 Main Road, Bengaluru - 560001",
+                "service_address": (
+                    "5th A Cross Road, Basappa Garden, Seshadripuram, "
+                    "Bengaluru Central City Corporation - 560001"
+                ),
                 "service_pin_code": "560001",
                 "service_area_id": area_id,
                 "latitude": 12.9716,

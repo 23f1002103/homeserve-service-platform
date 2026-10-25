@@ -1,8 +1,9 @@
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
@@ -20,24 +21,48 @@ def create_invoice_pdf(booking):
         bottomMargin=18 * mm,
     )
     styles = getSampleStyleSheet()
+    cell_style = ParagraphStyle(
+        "InvoiceCell",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=8.5,
+        leading=11,
+        spaceAfter=0,
+    )
+    header_cell_style = ParagraphStyle(
+        "InvoiceHeaderCell",
+        parent=cell_style,
+        textColor=colors.white,
+        fontName="Helvetica-Bold",
+    )
+
+    def cell(value, style=cell_style):
+        """Create a table value that wraps instead of crossing its cell border."""
+        return Paragraph(escape(str(value)), style)
+
     story = [
         Paragraph("HomeServe", styles["Title"]),
         Paragraph("SERVICE INVOICE", styles["Heading2"]),
         Spacer(1, 8 * mm),
         Table(
             [
-                ["Invoice number", f"HS-{booking.id:05d}"],
-                ["Customer", booking.customer.user.username],
-                ["Service", booking.service_type.name],
-                ["Service address", booking.service_address],
+                ["Invoice number", cell(f"HS-{booking.id:05d}", header_cell_style)],
+                ["Customer", cell(booking.customer.user.username)],
+                ["Service", cell(booking.service_type.name)],
+                ["Service address", cell(booking.service_address)],
                 [
                     "Scheduled for",
-                    booking.scheduled_for.strftime("%d %b %Y, %I:%M %p")
-                    if booking.scheduled_for
-                    else "Not scheduled",
+                    cell(
+                        booking.scheduled_for.strftime("%d %b %Y, %I:%M %p")
+                        if booking.scheduled_for
+                        else "Not scheduled"
+                    ),
                 ],
-                ["Payment method", payment.payment_method.replace("_", " ").title()],
-                ["Payment status", payment.status.title()],
+                [
+                    "Payment method",
+                    cell(payment.payment_method.replace("_", " ").title()),
+                ],
+                ["Payment status", cell(payment.status.title())],
             ],
             colWidths=[45 * mm, 115 * mm],
         ),
@@ -45,8 +70,8 @@ def create_invoice_pdf(booking):
         Table(
             [
                 ["Description", "Amount"],
-                [booking.service_type.name, f"INR {payment.amount}"],
-                ["Total paid", f"INR {payment.amount}"],
+                [cell(booking.service_type.name), cell(f"INR {payment.amount}")],
+                [cell("Total paid"), cell(f"INR {payment.amount}")],
             ],
             colWidths=[115 * mm, 45 * mm],
         ),
