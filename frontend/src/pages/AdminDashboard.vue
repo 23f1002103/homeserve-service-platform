@@ -1,8 +1,11 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminHeader from '../components/AdminHeader.vue'
+import { redirectExpiredSession } from '../utils/auth'
 
 const user = JSON.parse(localStorage.getItem('user') || '{}')
+const router = useRouter()
 const dashboard = ref(null)
 const errorMessage = ref('')
 const loading = ref(false)
@@ -15,6 +18,11 @@ async function loadDashboard() {
       const response = await fetch('/api/admin/dashboard', {
         headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
       })
+      if (response.status === 401) {
+        loading.value = false
+        await redirectExpiredSession(router)
+        return
+      }
       if (!response.ok) throw new Error('Could not load the dashboard')
       dashboard.value = await response.json()
       loading.value = false

@@ -71,6 +71,9 @@ async function login() {
       <p v-if="route.query.registered" class="form-success">
         Registration successful. You can sign in now.
       </p>
+      <p v-if="route.query.expired" class="form-error" role="alert">
+        Your session expired. Please sign in again.
+      </p>
 
       <GoogleSignInButton
         @authenticated="finishAuthentication"

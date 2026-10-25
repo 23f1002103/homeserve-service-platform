@@ -22,6 +22,7 @@ import ProfessionalEarningsPage from '../pages/ProfessionalEarningsPage.vue'
 import ProfessionalServiceAreasPage from '../pages/ProfessionalServiceAreasPage.vue'
 import ProfessionalPendingPage from '../pages/ProfessionalPendingPage.vue'
 import ProfessionalBlockedPage from '../pages/ProfessionalBlockedPage.vue'
+import { clearSession, tokenIsExpired } from '../utils/auth'
 
 
 const router = createRouter({
@@ -154,6 +155,10 @@ router.beforeEach((to) => {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
   if (!token) return '/login'
+  if (tokenIsExpired(token)) {
+    clearSession()
+    return { name: 'login', query: { expired: '1' } }
+  }
   if (to.meta.role && user.role !== to.meta.role) return '/'
 
   return true
