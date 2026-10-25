@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
+import { statusLabel } from '../utils/status'
 
 const jobs = ref([])
 const availableJobs = ref([])
@@ -85,9 +86,9 @@ onMounted(loadJobs)
     </section>
 
     <section v-else>
-      <div class="admin-filters"><button v-for="option in ['all', 'accepted', 'completed']" :key="option" :class="{ active: filter === option }" @click="filter = option">{{ option }}</button></div>
+      <div class="admin-filters"><button v-for="option in ['all', 'accepted', 'completed']" :key="option" :class="{ active: filter === option }" @click="filter = option">{{ option === 'all' ? 'All' : statusLabel(option) }}</button></div>
       <div class="job-list role-job-list">
-        <article v-for="job in visibleJobs" :key="job.id"><span class="job-number">#{{ String(job.id).padStart(3, '0') }}</span><div><strong>{{ job.service }}</strong><small>{{ job.customer }} · {{ job.address }}</small><a v-if="job.customer_phone" class="job-customer-phone" :href="`tel:${job.customer_phone}`">Call {{ job.customer_phone }}</a></div><time>{{ formatDate(job.scheduled_for) }}</time><span class="job-status">{{ job.status }}</span><div class="job-row-actions"><a v-if="job.directions_url" class="job-direction-link" :href="job.directions_url" target="_blank" rel="noopener noreferrer" aria-label="Open customer location in Google Maps"><span class="job-direction-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg></span><span><strong>Directions</strong><small>Google Maps</small></span><b aria-hidden="true">↗</b></a><button v-if="job.status === 'accepted'" class="job-complete-button" type="button" :disabled="completingJobId === job.id" @click="completeJob(job)">{{ completingJobId === job.id ? 'Saving…' : 'Mark completed' }}</button></div></article>
+        <article v-for="job in visibleJobs" :key="job.id"><span class="job-number">#{{ String(job.id).padStart(3, '0') }}</span><div><strong>{{ job.service }}</strong><small>{{ job.customer }} · {{ job.address }}</small><a v-if="job.customer_phone" class="job-customer-phone" :href="`tel:${job.customer_phone}`">Call {{ job.customer_phone }}</a></div><time>{{ formatDate(job.scheduled_for) }}</time><span class="job-status">{{ statusLabel(job.status) }}</span><div class="job-row-actions"><a v-if="job.directions_url" class="job-direction-link" :href="job.directions_url" target="_blank" rel="noopener noreferrer" aria-label="Open customer location in Google Maps"><span class="job-direction-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg></span><span><strong>Directions</strong><small>Google Maps</small></span><b aria-hidden="true">↗</b></a><button v-if="job.status === 'accepted'" class="job-complete-button" type="button" :disabled="completingJobId === job.id" @click="completeJob(job)">{{ completingJobId === job.id ? 'Saving…' : 'Mark completed' }}</button></div></article>
         <div v-if="!visibleJobs.length && !errorMessage" class="empty-job-sheet"><span></span><div><h3>No assigned jobs here.</h3><p>Accept a matching request from the available-jobs tab.</p></div></div>
       </div>
     </section>

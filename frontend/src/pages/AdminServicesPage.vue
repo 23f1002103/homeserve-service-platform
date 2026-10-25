@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 
 const services = ref([])
 const serviceName = ref('')
@@ -13,6 +14,7 @@ const creating = ref(false)
 const savingPriceId = ref(null)
 const deletingServiceId = ref(null)
 const searchQuery = ref('')
+const pendingDeleteService = ref(null)
 const visibleServices = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   return services.value.filter(service => [service.name, service.description, service.base_price].some(value => String(value || '').toLowerCase().includes(query)))
@@ -70,9 +72,6 @@ async function savePrice(service) {
 }
 
 async function deleteService(service) {
-  const warning = `Delete ${service.name}? This removes it from registration and customer booking. This action cannot be undone.`
-  if (!window.confirm(warning)) return
-
   errorMessage.value = ''
   successMessage.value = ''
   deletingServiceId.value = service.id
@@ -89,6 +88,7 @@ async function deleteService(service) {
     errorMessage.value = error.message
   } finally {
     deletingServiceId.value = null
+    pendingDeleteService.value = null
   }
 }
 
@@ -119,11 +119,22 @@ onMounted(loadServices)
               <span>₹</span><input v-model="priceDrafts[service.id]" type="number" min="1" step="0.01" aria-label="Base price" />
               <button type="button" :disabled="savingPriceId === service.id" @click="savePrice(service)">{{ savingPriceId === service.id ? 'Saving…' : 'Save price' }}</button>
             </div>
-            <button class="service-delete-button" type="button" :disabled="deletingServiceId === service.id" @click="deleteService(service)">{{ deletingServiceId === service.id ? 'Deleting…' : 'Delete' }}</button>
+            <button class="service-delete-button" type="button" :disabled="deletingServiceId === service.id" @click="pendingDeleteService = service">{{ deletingServiceId === service.id ? 'Deleting…' : 'Delete' }}</button>
           </article>
           <p v-if="!visibleServices.length">{{ searchQuery ? 'No services match your search.' : 'No service types yet. Create the first one above.' }}</p>
         </div>
       </section>
     </main>
+    <ConfirmActionModal
+      :open="Boolean(pendingDeleteService)"
+      eyebrow="Service catalogue"
+      :title="`Delete ${pendingDeleteService?.name || 'this service'}?`"
+      description="It will disappear from customer booking and professional registration. Services already used by a professional or booking remain protected by the backend."
+      confirm-label="Delete service"
+      :busy="deletingServiceId === pendingDeleteService?.id"
+      danger
+      @confirm="deleteService(pendingDeleteService)"
+      @cancel="pendingDeleteService = null"
+    />
   </div>
 </template>

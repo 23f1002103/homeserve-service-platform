@@ -1,16 +1,19 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 
 const areas = ref([])
 const city = ref('')
 const state = ref('')
 const pinCode = ref('')
 const errorMessage = ref('')
+const successMessage = ref('')
 const creating = ref(false)
 const deletingAreaId = ref(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
+const pendingDeleteArea = ref(null)
 const pageSize = 8
 const filteredAreas = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
@@ -58,6 +61,7 @@ async function loadAreas() {
 
 async function createArea() {
   errorMessage.value = ''
+  successMessage.value = ''
   creating.value = true
   try {
     const response = await fetch('/api/admin/service-areas', {
@@ -70,6 +74,7 @@ async function createArea() {
     city.value = ''
     state.value = ''
     pinCode.value = ''
+    successMessage.value = 'Service area added successfully'
     await loadAreas()
   } catch (error) {
     errorMessage.value = error.message
@@ -83,10 +88,8 @@ function demandHeight(demandCount) {
 }
 
 async function deleteArea(area) {
-  const warning = `Delete ${area.city} (${area.pin_code})? This cannot be undone.`
-  if (!window.confirm(warning)) return
-
   errorMessage.value = ''
+  successMessage.value = ''
   deletingAreaId.value = area.id
   try {
     const response = await fetch(`/api/admin/service-areas/${area.id}`, {
@@ -95,11 +98,13 @@ async function deleteArea(area) {
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Could not delete service area')
+    successMessage.value = `${area.city} (${area.pin_code}) was deleted`
     await loadAreas()
   } catch (error) {
     errorMessage.value = error.message
   } finally {
     deletingAreaId.value = null
+    pendingDeleteArea.value = null
   }
 }
 
@@ -115,6 +120,7 @@ onMounted(loadAreas)
         <p>Professionals can only select areas created here. Customer locations match by exact PIN first, then by city.</p>
       </header>
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
+      <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
 
       <section class="area-demand-panel">
         <div class="area-demand-panel__heading">
@@ -154,7 +160,7 @@ onMounted(loadAreas)
             <span>{{ String((currentPage - 1) * pageSize + index + 1).padStart(2, '0') }}</span>
             <div><strong>{{ area.city }}, {{ area.state }}</strong><small>{{ area.professional_count }} professional(s) selected this area</small></div>
             <code>{{ area.pin_code }}</code>
-            <button type="button" :disabled="deletingAreaId === area.id" @click="deleteArea(area)">
+            <button type="button" :disabled="deletingAreaId === area.id" @click="pendingDeleteArea = area">
               {{ deletingAreaId === area.id ? 'Deleting…' : 'Delete' }}
             </button>
           </article>
@@ -163,5 +169,16 @@ onMounted(loadAreas)
         </div>
       </section>
     </main>
+    <ConfirmActionModal
+      :open="Boolean(pendingDeleteArea)"
+      eyebrow="Service network"
+      :title="`Delete ${pendingDeleteArea?.city || 'this area'}?`"
+      :description="`PIN ${pendingDeleteArea?.pin_code || ''} will no longer be available for new professionals or bookings. This cannot be undone.`"
+      confirm-label="Delete area"
+      :busy="deletingAreaId === pendingDeleteArea?.id"
+      danger
+      @confirm="deleteArea(pendingDeleteArea)"
+      @cancel="pendingDeleteArea = null"
+    />
   </div>
 </template>

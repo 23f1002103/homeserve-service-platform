@@ -1,12 +1,15 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 
 const professionals = ref([])
 const errorMessage = ref('')
 const successMessage = ref('')
 const filter = ref('all')
 const searchQuery = ref('')
+const pendingBlock = ref(null)
+const updatingProfessionalId = ref(null)
 const visibleProfessionals = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   return professionals.value.filter((item) => {
@@ -25,14 +28,14 @@ async function loadProfessionals() {
   } catch (error) { errorMessage.value = error.message }
 }
 
-async function updateApplication(professional, status) {
+function requestBlock(professional) {
+  pendingBlock.value = professional
+}
+
+async function updateApplication(professional, status, reason = '') {
   errorMessage.value = ''
   successMessage.value = ''
-  let reason = ''
-  if (status === 'blocked') {
-    reason = window.prompt('Why is this professional being blocked?') || ''
-    if (!reason.trim()) return
-  }
+  updatingProfessionalId.value = professional.id
   try {
     const response = await fetch(`/api/admin/professionals/${professional.id}/status`, {
       method: 'PATCH',
@@ -47,6 +50,9 @@ async function updateApplication(professional, status) {
     await loadProfessionals()
   } catch (error) {
     errorMessage.value = error.message
+  } finally {
+    updatingProfessionalId.value = null
+    pendingBlock.value = null
   }
 }
 
@@ -70,13 +76,26 @@ onMounted(loadProfessionals)
           <div class="record-rating"><small>Rating</small><strong>{{ professional.average_rating ? `${professional.average_rating} ★` : 'New' }}</strong><small>{{ professional.review_count }} review{{ professional.review_count === 1 ? '' : 's' }}</small></div>
           <span class="record-status" :class="`status-${professional.approval_status}`">{{ professional.approval_status }}</span>
           <div class="approval-actions">
-            <button v-if="professional.approval_status === 'pending'" class="approve-action" @click="updateApplication(professional, 'approved')">Approve</button>
-            <button v-if="professional.approval_status === 'blocked'" class="unblock-action" @click="updateApplication(professional, 'approved')">Unblock</button>
-            <button v-if="professional.approval_status !== 'blocked'" class="block-action" @click="updateApplication(professional, 'blocked')">Block</button>
+            <button v-if="professional.approval_status === 'pending'" class="approve-action" :disabled="updatingProfessionalId === professional.id" @click="updateApplication(professional, 'approved')">Approve</button>
+            <button v-if="professional.approval_status === 'blocked'" class="unblock-action" :disabled="updatingProfessionalId === professional.id" @click="updateApplication(professional, 'approved')">Unblock</button>
+            <button v-if="professional.approval_status !== 'blocked'" class="block-action" :disabled="updatingProfessionalId === professional.id" @click="requestBlock(professional)">Block</button>
           </div>
         </article>
         <p v-if="!visibleProfessionals.length" class="records-empty">No professionals match this filter.</p>
       </section>
     </main>
+    <ConfirmActionModal
+      :open="Boolean(pendingBlock)"
+      eyebrow="Account control"
+      :title="`Block ${pendingBlock?.username || 'this professional'}?`"
+      description="They will be unable to accept new jobs. Existing active work must be completed before the account can be blocked."
+      confirm-label="Block professional"
+      reason-label="Reason for blocking"
+      reason-placeholder="Example: Repeated low ratings or policy violation"
+      :busy="updatingProfessionalId === pendingBlock?.id"
+      danger
+      @confirm="updateApplication(pendingBlock, 'blocked', $event)"
+      @cancel="pendingBlock = null"
+    />
   </div>
 </template>

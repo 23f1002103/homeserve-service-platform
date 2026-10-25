@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import CustomerHeader from '../components/CustomerHeader.vue'
+import { statusLabel } from '../utils/status'
 const bookings = ref([])
 const filter = ref('all')
 const searchQuery = ref('')
@@ -13,6 +15,7 @@ const reviewComment = ref('')
 const submittingReview = ref(false)
 const cancellingBookingId = ref(null)
 const downloadingInvoiceId = ref(null)
+const pendingCancelBooking = ref(null)
 const visibleBookings = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   return bookings.value.filter(item => {
@@ -55,11 +58,6 @@ async function submitReview(booking) {
 }
 
 async function cancelBooking(booking) {
-  const warning = booking.payment_status === 'completed'
-    ? 'Cancel this booking? Its demo payment will be marked as refunded.'
-    : 'Cancel this booking? This cannot be undone.'
-  if (!window.confirm(warning)) return
-
   errorMessage.value = ''
   successMessage.value = ''
   cancellingBookingId.value = booking.id
@@ -78,6 +76,7 @@ async function cancelBooking(booking) {
     errorMessage.value = error.message
   } finally {
     cancellingBookingId.value = null
+    pendingCancelBooking.value = null
   }
 }
 
@@ -122,7 +121,7 @@ onMounted(loadBookings)
           <span><small>SCHEDULE</small><strong>{{ formatDate(booking.scheduled_for) }}</strong></span>
           <span><small>PROFESSIONAL</small><strong>{{ booking.professional || 'Waiting for match' }}</strong></span>
           <span><small>AMOUNT</small><strong>{{ booking.price ? `₹${booking.price}` : '—' }}</strong></span>
-          <span class="record-status" :class="`status-${booking.status}`">{{ booking.status.replace('_', ' ') }}</span>
+          <span class="record-status" :class="`status-${booking.status}`">{{ statusLabel(booking.status) }}</span>
           <b>{{ expandedBookingId === booking.id ? '−' : '+' }}</b>
         </button>
 
@@ -132,7 +131,7 @@ onMounted(loadBookings)
           <div v-if="booking.status === 'cancelled'" class="booking-cancelled-note"><span>×</span><div><strong>Booking cancelled</strong><p>No professional can accept this request. {{ booking.payment_status === 'refunded' ? 'The demo payment is marked as refunded.' : '' }}</p></div></div>
           <div v-else class="booking-progress" :class="`booking-progress--${booking.status}`"><span>Requested</span><i></i><span>Accepted</span><i></i><span>Completed</span></div>
 
-          <div v-if="!booking.professional && ['payment_pending', 'pending'].includes(booking.status)" class="booking-cancel-action"><div><strong>Plans changed?</strong><small>You can cancel until a professional accepts this booking.</small></div><button type="button" :disabled="cancellingBookingId === booking.id" @click="cancelBooking(booking)">{{ cancellingBookingId === booking.id ? 'Cancelling…' : 'Cancel booking' }}</button></div>
+          <div v-if="!booking.professional && ['payment_pending', 'pending'].includes(booking.status)" class="booking-cancel-action"><div><strong>Plans changed?</strong><small>You can cancel until a professional accepts this booking.</small></div><button type="button" :disabled="cancellingBookingId === booking.id" @click="pendingCancelBooking = booking">{{ cancellingBookingId === booking.id ? 'Cancelling…' : 'Cancel booking' }}</button></div>
 
           <section v-if="booking.status === 'completed'" class="booking-review-panel">
             <div v-if="booking.review" class="submitted-review"><span>{{ '★'.repeat(booking.review.rating) }}{{ '☆'.repeat(5 - booking.review.rating) }}</span><div><strong>Your review</strong><p>{{ booking.review.comment || 'No written comment.' }}</p></div></div>
@@ -143,5 +142,17 @@ onMounted(loadBookings)
       </article>
       <div v-if="!visibleBookings.length && !errorMessage" class="booking-empty-state"><strong>No bookings here yet.</strong><p>Choose a household service whenever your home needs care.</p><RouterLink to="/customer/services">Explore services</RouterLink></div>
     </section>
-  </main></div>
+  </main>
+  <ConfirmActionModal
+    :open="Boolean(pendingCancelBooking)"
+    eyebrow="Booking change"
+    :title="`Cancel booking #${pendingCancelBooking?.id || ''}?`"
+    :description="pendingCancelBooking?.payment_status === 'completed' ? 'The booking will close and its demo payment will be marked as refunded. No real money is involved.' : 'The booking will close immediately and professionals will no longer be able to accept it.'"
+    confirm-label="Cancel booking"
+    :busy="cancellingBookingId === pendingCancelBooking?.id"
+    danger
+    @confirm="cancelBooking(pendingCancelBooking)"
+    @cancel="pendingCancelBooking = null"
+  />
+  </div>
 </template>
