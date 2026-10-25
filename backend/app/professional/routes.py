@@ -7,7 +7,7 @@ from flask_jwt_extended import get_jwt_identity
 from ..auth.decorators import roles_required
 from ..database import db
 from ..location import get_address_from_coordinates
-from ..models import Professional, Review, ServiceArea, ServiceRequest
+from ..models import Notification, Professional, Review, ServiceArea, ServiceRequest
 from ..tasks import enqueue_task, send_booking_completed
 
 
@@ -206,6 +206,15 @@ def accept_job(job_id):
 
     job.professional_id = profile.id
     job.status = "accepted"
+    db.session.add(
+        Notification(
+            user_id=job.customer.user_id,
+            message=(
+                f"{profile.user.username} accepted your "
+                f"{job.service_type.name} booking #{job.id}."
+            ),
+        )
+    )
     db.session.commit()
 
     return {"message": "Job accepted successfully"}, 200

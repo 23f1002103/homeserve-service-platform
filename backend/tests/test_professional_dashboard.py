@@ -227,6 +227,19 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         accepted = self.client.patch(
             f"/api/professional/jobs/{job_id}/accept", headers=headers
         )
+        notification_response = self.client.get(
+            "/api/customer/notifications/unread",
+            headers={"Authorization": f"Bearer {customer_token}"},
+        )
+        notification_id = notification_response.get_json()["notification"]["id"]
+        notification_read = self.client.patch(
+            f"/api/customer/notifications/{notification_id}/read",
+            headers={"Authorization": f"Bearer {customer_token}"},
+        )
+        notification_after_read = self.client.get(
+            "/api/customer/notifications/unread",
+            headers={"Authorization": f"Bearer {customer_token}"},
+        )
         assigned = self.client.get("/api/professional/jobs", headers=headers)
         cancellation_after_assignment = self.client.patch(
             f"/api/customer/bookings/{job_id}/cancel",
@@ -294,6 +307,13 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(len(available.get_json()["available_jobs"]), 2)
         self.assertNotIn("directions_url", available.get_json()["available_jobs"][0])
         self.assertEqual(accepted.status_code, 200)
+        self.assertEqual(notification_response.status_code, 200)
+        self.assertIn(
+            "accepted your Plumbing booking",
+            notification_response.get_json()["notification"]["message"],
+        )
+        self.assertEqual(notification_read.status_code, 200)
+        self.assertIsNone(notification_after_read.get_json()["notification"])
         self.assertEqual(cancellation_after_assignment.status_code, 409)
         self.assertTrue(assigned.get_json()["has_active_job"])
         self.assertEqual(assigned.get_json()["available_jobs"], [])

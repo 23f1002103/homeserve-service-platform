@@ -1010,3 +1010,101 @@
   .decision-note { margin-block: 45px 65px; padding: 28px 23px; }
 }
 
+.action-notice-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgb(14 31 25 / 58%);
+  backdrop-filter: blur(7px);
+}
+
+.action-notice {
+  position: relative;
+  width: min(100%, 560px);
+  padding: clamp(34px, 6vw, 54px);
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 65%);
+  border-radius: 28px 8px 28px 8px;
+  background: #f8f5ed;
+  box-shadow: 0 30px 90px rgb(8 28 20 / 35%);
+}
+
+.action-notice::after {
+  position: absolute;
+  right: -72px;
+  bottom: -96px;
+  width: 210px;
+  height: 210px;
+  border: 1px solid rgb(31 98 75 / 12%);
+  border-radius: 50%;
+  content: '';
+  box-shadow: 0 0 0 34px rgb(31 98 75 / 4%), 0 0 0 68px rgb(31 98 75 / 3%);
+  pointer-events: none;
+}
+
+.action-notice__symbol {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 30px;
+  place-items: center;
+  border-radius: 50% 50% 50% 14px;
+  color: #f8f5ed;
+  background: #1d5945;
+  font: 700 0.9rem Georgia, serif;
+}
+
+.action-notice > p {
+  margin-bottom: 12px;
+  color: #a95331;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.action-notice h2 {
+  max-width: 470px;
+  margin-bottom: 18px;
+  color: #173f33;
+  font-size: clamp(2.1rem, 5vw, 3.4rem);
+  line-height: 0.98;
+}
+
+.action-notice > span {
+  position: relative;
+  z-index: 1;
+  display: block;
+  max-width: 470px;
+  color: #65716b;
+  line-height: 1.7;
+}
+
+.action-notice__actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.action-notice__actions button {
+  min-height: 48px;
+  padding: 0 21px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.action-notice__primary { border: 1px solid #1d5945; color: #fff; background: #1d5945; }
+.action-notice__secondary { border: 1px solid #c5c9c3; color: #435149; background: transparent; }
+.action-notice__primary:hover { background: #174738; }
+.action-notice__secondary:hover { border-color: #7f8b84; }
+
+@media (max-width: 520px) {
+  .action-notice { padding: 34px 25px; }
+  .action-notice__actions { align-items: stretch; flex-direction: column; }
+}
+

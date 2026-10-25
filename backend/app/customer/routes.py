@@ -8,7 +8,7 @@ from flask_jwt_extended import get_jwt_identity
 from ..auth.decorators import roles_required
 from ..database import db
 from ..location import get_address_from_coordinates, normalize_city_name
-from ..models import Customer, Payment, Review, ServiceArea, ServiceRequest, ServiceType
+from ..models import Customer, Notification, Payment, Review, ServiceArea, ServiceRequest, ServiceType
 from ..reports import create_invoice_pdf
 from ..tasks import enqueue_task, send_booking_confirmation
 
@@ -61,6 +61,53 @@ def dashboard():
         "open_bookings": open_bookings,
         "completed_bookings": completed_bookings,
     }, 200
+
+
+@customer.get("/notifications/unread")
+@roles_required("customer")
+def unread_notification():
+    user_id = int(get_jwt_identity())
+    notification = db.session.scalar(
+        db.select(Notification)
+        .where(
+            Notification.user_id == user_id,
+            Notification.is_read.is_(False),
+        )
+        .order_by(Notification.created_at.asc(), Notification.id.asc())
+    )
+
+    if notification is None:
+        return {"notification": None}, 200
+
+    return {
+        "notification": {
+            "id": notification.id,
+            "message": notification.message,
+            "created_at": (
+                notification.created_at.isoformat()
+                if notification.created_at
+                else None
+            ),
+        }
+    }, 200
+
+
+@customer.patch("/notifications/<int:notification_id>/read")
+@roles_required("customer")
+def mark_notification_read(notification_id):
+    user_id = int(get_jwt_identity())
+    notification = db.session.scalar(
+        db.select(Notification).where(
+            Notification.id == notification_id,
+            Notification.user_id == user_id,
+        )
+    )
+    if notification is None:
+        return {"message": "Notification not found"}, 404
+
+    notification.is_read = True
+    db.session.commit()
+    return {"message": "Notification marked as read"}, 200
 
 
 @customer.get("/services")

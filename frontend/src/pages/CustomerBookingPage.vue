@@ -1,12 +1,14 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import ActionNoticeModal from '../components/ActionNoticeModal.vue'
 import CustomerHeader from '../components/CustomerHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
 const service = ref(null)
 const profile = ref(null)
+const profileRequired = ref(false)
 const scheduledFor = ref('')
 const serviceAddress = ref('')
 const servicePinCode = ref('')
@@ -108,10 +110,7 @@ async function loadBookingPage() {
     serviceAreaAvailable.value = servicesData.service_area_available
     profile.value = profileData.profile
     if (profile.value.profile_complete === false) {
-      await router.replace({
-        name: 'customer-profile',
-        query: { complete: '1', reason: 'booking', next: route.fullPath },
-      })
+      profileRequired.value = true
       return
     }
     serviceAddress.value = `${profile.value.address}, ${profile.value.city}, ${profile.value.state} - ${profile.value.pin_code}`
@@ -168,6 +167,13 @@ function detectCurrentLocation() {
     },
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
   )
+}
+
+function completeProfile() {
+  router.push({
+    name: 'customer-profile',
+    query: { complete: '1', reason: 'booking', next: route.fullPath },
+  })
 }
 
 async function submitBooking() {
@@ -270,11 +276,23 @@ onUnmounted(() => clearInterval(timerId))
           </template>
 
           <div v-else-if="paymentScreen === 'processing'" class="demo-payment-result is-processing"><span></span><h2>Processing demo payment…</h2><p>Updating the payment and booking records.</p></div>
-          <div v-else-if="paymentScreen === 'success'" class="demo-payment-result is-success"><span>✓</span><p>DEMO PAYMENT SUCCESSFUL</p><h2>Booking confirmed.</h2><p>₹{{ demoPayment.amount }} was simulated successfully. No real money was transferred.</p><button type="button" @click="router.push('/customer/bookings')">View my booking</button></div>
+          <div v-else-if="paymentScreen === 'success'" class="demo-payment-result is-success"><span>✓</span><p>BOOKING #{{ bookingId }} CONFIRMED</p><h2>Your request is now live.</h2><p>The demo payment of ₹{{ demoPayment.amount }} was recorded. We’ll notify you when a professional accepts the job.</p><button type="button" @click="router.push('/customer/bookings')">Track my booking</button></div>
           <div v-else-if="paymentScreen === 'failed'" class="demo-payment-result is-failed"><span>×</span><p>DEMO PAYMENT FAILED</p><h2>No payment was recorded.</h2><p>Use retry to demonstrate the successful payment path.</p><button type="button" @click="retryDemoPayment">Retry demo payment</button></div>
           <div v-else class="demo-payment-result is-failed"><span>!</span><p>DEMO SESSION EXPIRED</p><h2>The timer has ended.</h2><button type="button" @click="retryDemoPayment">Start again</button></div>
         </section>
       </div>
+
+      <ActionNoticeModal
+        :open="profileRequired"
+        eyebrow="Before you book"
+        title="Tell us where we can reach you."
+        description="Your Google sign-in is complete. Add your phone number and home address once so we can create the booking and share the correct location with your assigned professional."
+        primary-label="Complete my profile"
+        secondary-label="Browse services"
+        symbol="⌂"
+        @primary="completeProfile"
+        @secondary="router.push('/customer/services')"
+      />
     </main>
   </div>
 </template>

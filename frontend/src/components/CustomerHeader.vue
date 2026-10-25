@@ -1,11 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ActionNoticeModal from './ActionNoticeModal.vue'
 
 defineProps({ current: { type: String, required: true } })
 const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const menuOpen = ref(false)
+const notification = ref(null)
+let notificationTimer
 const links = [
   { name: 'Home', path: '/customer/dashboard', key: 'overview' },
   { name: 'Services', path: '/customer/services', key: 'services' },
@@ -17,6 +20,40 @@ function logout() {
   localStorage.removeItem('user')
   router.push('/login')
 }
+
+async function loadNotification() {
+  try {
+    const response = await fetch('/api/customer/notifications/unread', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+    })
+    if (!response.ok) return
+    const data = await response.json()
+    notification.value = data.notification
+  } catch {
+    // Navigation should keep working if a background notification check fails.
+  }
+}
+
+async function closeNotification(openBookings = false) {
+  const currentNotification = notification.value
+  notification.value = null
+  try {
+    if (currentNotification) {
+      await fetch(`/api/customer/notifications/${currentNotification.id}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      })
+    }
+  } finally {
+    if (openBookings) await router.push('/customer/bookings')
+  }
+}
+
+onMounted(() => {
+  loadNotification()
+  notificationTimer = window.setInterval(loadNotification, 45000)
+})
+onUnmounted(() => window.clearInterval(notificationTimer))
 </script>
 
 <template>
@@ -46,4 +83,15 @@ function logout() {
       </div>
     </div>
   </header>
+  <ActionNoticeModal
+    :open="Boolean(notification)"
+    eyebrow="Booking update"
+    title="A professional accepted your request."
+    :description="notification?.message || 'Open your booking to see who is assigned and what happens next.'"
+    primary-label="View booking"
+    secondary-label="Got it"
+    symbol="✓"
+    @primary="closeNotification(true)"
+    @secondary="closeNotification(false)"
+  />
 </template>
