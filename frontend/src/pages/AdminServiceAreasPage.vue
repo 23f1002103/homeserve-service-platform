@@ -10,6 +10,7 @@ const pinCode = ref('')
 const errorMessage = ref('')
 const successMessage = ref('')
 const creating = ref(false)
+const editingAreaId = ref(null)
 const deletingAreaId = ref(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
@@ -64,8 +65,9 @@ async function createArea() {
   successMessage.value = ''
   creating.value = true
   try {
-    const response = await fetch('/api/admin/service-areas', {
-      method: 'POST',
+    const isEditing = editingAreaId.value !== null
+    const response = await fetch(isEditing ? `/api/admin/service-areas/${editingAreaId.value}` : '/api/admin/service-areas', {
+      method: isEditing ? 'PATCH' : 'POST',
       headers: authHeaders(true),
       body: JSON.stringify({ city: city.value, state: state.value, pin_code: pinCode.value }),
     })
@@ -74,13 +76,32 @@ async function createArea() {
     city.value = ''
     state.value = ''
     pinCode.value = ''
-    successMessage.value = 'Service area added successfully'
+    editingAreaId.value = null
+    successMessage.value = isEditing ? 'Service area updated successfully' : 'Service area added successfully'
     await loadAreas()
   } catch (error) {
     errorMessage.value = error.message
   } finally {
     creating.value = false
   }
+}
+
+function editArea(area) {
+  errorMessage.value = ''
+  successMessage.value = ''
+  editingAreaId.value = area.id
+  city.value = area.city
+  state.value = area.state
+  pinCode.value = area.pin_code
+  document.querySelector('.service-manager')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function cancelEdit() {
+  editingAreaId.value = null
+  city.value = ''
+  state.value = ''
+  pinCode.value = ''
+  errorMessage.value = ''
 }
 
 function demandHeight(demandCount) {
@@ -119,9 +140,6 @@ onMounted(loadAreas)
         <div><p class="workbench-label">NETWORK / AREAS</p><h1>Choose where<br />HomeServe works.</h1></div>
         <p>Professionals can only select areas created here. Customer locations match by exact PIN first, then by city.</p>
       </header>
-      <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
-
       <section class="area-demand-panel">
         <div class="area-demand-panel__heading">
           <div><p class="workbench-label">LIVE DEMAND</p><h2>Requests by service area</h2></div>
@@ -143,15 +161,20 @@ onMounted(loadAreas)
       </section>
 
       <section class="service-manager standalone-manager">
+        <p v-if="errorMessage" class="dashboard-alert service-manager-notice">{{ errorMessage }}</p>
+        <p v-if="successMessage" class="profile-success service-manager-notice">{{ successMessage }}</p>
         <div class="service-manager__intro">
-          <p class="workbench-label">NEW SERVICE AREA</p><h2>Add one supported location.</h2>
+          <p class="workbench-label">{{ editingAreaId === null ? 'NEW SERVICE AREA' : 'EDIT SERVICE AREA' }}</p><h2>{{ editingAreaId === null ? 'Add one supported location.' : 'Update this location.' }}</h2>
           <p>Enter a real city, state, and PIN code. Professionals see these names, not database IDs.</p>
         </div>
         <form class="service-form" @submit.prevent="createArea">
           <label>City<input v-model.trim="city" placeholder="Example: Bengaluru" required /></label>
           <label>State<input v-model.trim="state" placeholder="Example: Karnataka" required /></label>
           <label>PIN code<input v-model.trim="pinCode" placeholder="Example: 560001" required /></label>
-          <button type="submit" :disabled="creating">{{ creating ? 'Creating…' : 'Add service area' }}</button>
+          <div class="service-form-actions">
+            <button type="submit" :disabled="creating">{{ creating ? 'Saving…' : editingAreaId === null ? 'Add service area' : 'Save changes' }}</button>
+            <button v-if="editingAreaId !== null" type="button" class="service-form-cancel" :disabled="creating" @click="cancelEdit">Cancel</button>
+          </div>
         </form>
         <div class="service-type-list area-manager-list">
           <label class="list-search manager-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search city, state or PIN" aria-label="Search service areas" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label>
@@ -160,9 +183,12 @@ onMounted(loadAreas)
             <span>{{ String((currentPage - 1) * pageSize + index + 1).padStart(2, '0') }}</span>
             <div><strong>{{ area.city }}, {{ area.state }}</strong><small>{{ area.professional_count }} professional(s) selected this area</small></div>
             <code>{{ area.pin_code }}</code>
-            <button type="button" :disabled="deletingAreaId === area.id" @click="pendingDeleteArea = area">
-              {{ deletingAreaId === area.id ? 'Deleting…' : 'Delete' }}
-            </button>
+            <div class="area-row-actions">
+              <button type="button" class="area-edit-button" :disabled="deletingAreaId === area.id" @click="editArea(area)">Edit</button>
+              <button type="button" class="area-delete-button" :disabled="deletingAreaId === area.id" @click="pendingDeleteArea = area">
+                {{ deletingAreaId === area.id ? 'Deleting…' : 'Delete' }}
+              </button>
+            </div>
           </article>
           <p v-if="!paginatedAreas.length">{{ searchQuery ? 'No service areas match your search.' : 'No service areas yet. Create the first one above.' }}</p>
           <nav v-if="pageCount > 1" class="area-pagination" aria-label="Service area pages"><button type="button" :disabled="currentPage === 1" @click="currentPage--">Previous</button><span>{{ currentPage }} / {{ pageCount }}</span><button type="button" :disabled="currentPage === pageCount" @click="currentPage++">Next</button></nav>

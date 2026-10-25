@@ -130,6 +130,7 @@
 .directory-row > a { padding: 7px 10px; border: 1px solid #7e8a83; color: #324b41; font-size: 0.7rem; font-weight: 800; }
 
 .service-manager { display: grid; grid-template-columns: 0.7fr 1.3fr; gap: 55px 80px; margin-top: 85px; padding: clamp(30px, 5vw, 55px); border: 1px solid #aeb5af; background: #f7f5ef; }
+.service-manager-notice { grid-column: 1 / -1; margin: 0; }
 .service-manager__intro h2 { margin-bottom: 18px; font-size: clamp(2.2rem, 4vw, 3.8rem); line-height: 0.96; }
 .service-manager__intro > p:last-child { color: #69746e; line-height: 1.65; }
 .service-form { display: grid; gap: 17px; align-content: start; }
@@ -142,6 +143,8 @@
 .service-form textarea:focus { border-color: #255443; outline: 2px solid rgb(37 84 67 / 13%); }
 .service-form button { justify-self: start; padding: 13px 18px; border: 0; color: #fff; background: #294f42; font-weight: 800; }
 .service-form button:disabled { cursor: wait; opacity: 0.65; }
+.service-form-actions { display: flex; gap: 10px; align-items: center; }
+.service-form .service-form-cancel { border: 1px solid #839087; color: #425149; background: transparent; }
 .service-type-list { grid-column: 1 / -1; border-top: 1px solid #aeb5af; }
 .service-type-list article { display: grid; grid-template-columns: 45px 1fr auto; gap: 20px; align-items: center; min-height: 82px; border-bottom: 1px solid #c9cdc7; }
 .service-type-list article > span,
@@ -523,8 +526,11 @@
 .city-demand-columns footer b { overflow: hidden; color: #eef4f0; font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
 .city-demand-columns footer small { overflow: hidden; color: #91a59b; font-size: 0.58rem; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
 .area-manager-list article { grid-template-columns: 45px 1fr auto auto; }
-.area-manager-list article > button { padding: 8px 10px; border: 1px solid #bd8e80; color: #923f2b; background: transparent; font-size: 0.68rem; font-weight: 800; }
-.area-manager-list article > button:disabled { cursor: wait; opacity: 0.55; }
+.area-row-actions { display: flex !important; grid-auto-flow: column; gap: 8px !important; }
+.area-row-actions button { padding: 8px 10px; background: transparent; font-size: 0.68rem; font-weight: 800; }
+.area-row-actions .area-edit-button { border: 1px solid #789083; color: #294f42; }
+.area-row-actions .area-delete-button { border: 1px solid #bd8e80; color: #923f2b; }
+.area-row-actions button:disabled { cursor: wait; opacity: 0.55; }
 .area-list-caption { display: flex; justify-content: space-between; padding: 12px 0; color: #748078; border-bottom: 1px solid #c9cec9; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
 .area-pagination { display: flex; justify-content: flex-end; align-items: center; gap: 14px; padding-top: 18px; }
 .area-pagination button { min-width: 82px; padding: 9px 12px; border: 1px solid #a9b2ab; color: #31463c; background: transparent; font-size: 0.68rem; font-weight: 800; }
@@ -898,7 +904,7 @@
   .area-network-summary { align-items: flex-start; flex-direction: column; gap: 8px; }
   .area-network-summary small { margin-left: 0; }
   .area-manager-list article { grid-template-columns: 35px 1fr auto; }
-  .area-manager-list article > button { grid-column: 2 / -1; justify-self: end; }
+  .area-row-actions { grid-column: 2 / -1; justify-self: end; }
   .area-actions { align-items: stretch; flex-direction: column; }
   .area-unavailable { grid-template-columns: 1fr; }
   .area-unavailable__actions { align-items: stretch; flex-direction: column; }

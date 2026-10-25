@@ -519,6 +519,46 @@ def create_service_area():
     }, 201
 
 
+@admin.patch("/service-areas/<int:area_id>")
+@roles_required("admin")
+def update_service_area(area_id):
+    area = db.session.get(ServiceArea, area_id)
+    if area is None:
+        return {"message": "Service area not found"}, 404
+
+    data = request.get_json(silent=True) or {}
+    city = (data.get("city") or "").strip()
+    state = (data.get("state") or "").strip()
+    pin_code = (data.get("pin_code") or "").strip()
+
+    if not city or not state or not pin_code:
+        return {"message": "City, state, and PIN code are required"}, 400
+
+    existing_area = db.session.scalar(
+        db.select(ServiceArea).where(
+            ServiceArea.pin_code == pin_code,
+            ServiceArea.id != area.id,
+        )
+    )
+    if existing_area is not None:
+        return {"message": "This PIN code is already a service area"}, 409
+
+    area.city = city
+    area.state = state
+    area.pin_code = pin_code
+    db.session.commit()
+
+    return {
+        "message": "Service area updated successfully",
+        "service_area": {
+            "id": area.id,
+            "city": area.city,
+            "state": area.state,
+            "pin_code": area.pin_code,
+        },
+    }, 200
+
+
 @admin.delete("/service-areas/<int:area_id>")
 @roles_required("admin")
 def delete_service_area(area_id):
