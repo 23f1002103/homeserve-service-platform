@@ -77,6 +77,11 @@ class CustomerDashboardTestCase(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(key, response.get_json())
 
+        dashboard = self.client.get(
+            "/api/customer/dashboard", headers=headers
+        ).get_json()
+        self.assertIsNone(dashboard["active_booking"])
+
     def test_customer_can_update_profile_fields(self):
         response = self.client.patch(
             "/api/customer/profile",

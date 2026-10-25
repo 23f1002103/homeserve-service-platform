@@ -93,9 +93,38 @@ class Professional(db.Model):
     )
 
     user = db.relationship('User', backref=db.backref('professional', uselist=False))
+    photo = db.relationship(
+        "ProfessionalPhoto",
+        back_populates="professional",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
     def __repr__(self):
         return f'<Professional {self.user.username}>'
+
+
+class ProfessionalPhoto(db.Model):
+    """A professional's customer-facing profile photo."""
+    __tablename__ = "professional_photos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    professional_id = db.Column(
+        db.Integer,
+        db.ForeignKey("professionals.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    image_data = db.Column(db.LargeBinary, nullable=False)
+    mime_type = db.Column(db.String(50), nullable=False)
+    updated_at = db.Column(
+        db.DateTime,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+        nullable=False,
+    )
+
+    professional = db.relationship("Professional", back_populates="photo")
 
 class ServiceRequest(db.Model):
     """Model representing a service request in the HomeServe application."""

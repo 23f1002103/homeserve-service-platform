@@ -141,7 +141,7 @@ onMounted(loadBookings)
         <div v-if="expandedBookingId === booking.id" class="booking-compact-details">
           <div class="booking-detail-copy"><div><small>PROBLEM DETAILS</small><p>{{ booking.description || 'No extra details provided.' }}</p></div><div><small>SERVICE ADDRESS</small><p>{{ booking.address }}</p></div><div><small>PAYMENT</small><p>{{ paymentLabel(booking.payment_method) }} · {{ booking.payment_status || 'pending' }}</p></div></div>
           <section v-if="booking.professional_details" class="assigned-professional-card">
-            <span class="assigned-professional-avatar">{{ professionalInitial(booking.professional_details.name) }}</span>
+            <span class="assigned-professional-avatar"><img v-if="booking.professional_details.profile_image_url" :src="booking.professional_details.profile_image_url" :alt="booking.professional_details.name" /><template v-else>{{ professionalInitial(booking.professional_details.name) }}</template></span>
             <div class="assigned-professional-identity"><small>ASSIGNED PROFESSIONAL</small><strong>{{ booking.professional_details.name }}</strong><p>{{ booking.service }} specialist</p></div>
             <div class="assigned-professional-facts"><span><small>EXPERIENCE</small><strong>{{ experienceLabel(booking.professional_details.experience_years) }}</strong></span><span><small>CUSTOMER RATING</small><strong>{{ ratingLabel(booking.professional_details) }}</strong></span></div>
             <a v-if="booking.professional_details.phone_number" :href="`tel:${booking.professional_details.phone_number}`"><span>Call professional</span><strong>{{ booking.professional_details.phone_number }}</strong></a>

@@ -1,17 +1,46 @@
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from flask import Blueprint, request
+from flask import Blueprint, Response, request
 from flask_jwt_extended import get_jwt_identity
 
 from ..auth.decorators import roles_required
 from ..database import db
 from ..location import get_address_from_coordinates
-from ..models import Notification, Professional, Review, ServiceArea, ServiceRequest
+from ..models import (
+    Notification,
+    Professional,
+    ProfessionalPhoto,
+    Review,
+    ServiceArea,
+    ServiceRequest,
+)
 from ..tasks import enqueue_task, send_booking_completed
 
 
 professional = Blueprint("professional", __name__)
+MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024
+PROFILE_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+def profile_photo_url(profile):
+    if profile.photo is None:
+        return None
+    return f"/api/professional/profiles/{profile.id}/photo"
+
+
+def valid_image_signature(image_data, mime_type):
+    if mime_type == "image/jpeg":
+        return image_data.startswith(b"\xff\xd8\xff")
+    if mime_type == "image/png":
+        return image_data.startswith(b"\x89PNG\r\n\x1a\n")
+    if mime_type == "image/webp":
+        return (
+            len(image_data) >= 12
+            and image_data.startswith(b"RIFF")
+            and image_data[8:12] == b"WEBP"
+        )
+    return False
 
 
 def directions_url(job):
@@ -332,6 +361,7 @@ def profile():
             "approval_status": professional_profile.approval_status,
             "average_rating": average_rating,
             "review_count": len(reviews),
+            "profile_image_url": profile_photo_url(professional_profile),
         }
     }, 200
 
@@ -371,6 +401,90 @@ def update_profile():
     db.session.commit()
 
     return {"message": "Profile updated successfully"}, 200
+
+
+@professional.put("/profile/photo")
+@roles_required("professional")
+def update_profile_photo():
+    user_id = int(get_jwt_identity())
+    professional_profile = db.session.scalar(
+        db.select(Professional).where(Professional.user_id == user_id)
+    )
+    if professional_profile is None:
+        return {"message": "Professional profile not found"}, 404
+    if (
+        request.content_length is not None
+        and request.content_length > MAX_PROFILE_PHOTO_BYTES + 64 * 1024
+    ):
+        return {"message": "Profile photo must be 2 MB or smaller"}, 413
+
+    uploaded_photo = request.files.get("photo")
+    if uploaded_photo is None or not uploaded_photo.filename:
+        return {"message": "Choose a profile photo"}, 400
+
+    mime_type = (uploaded_photo.mimetype or "").lower()
+    if mime_type not in PROFILE_PHOTO_TYPES:
+        return {"message": "Profile photo must be a JPEG, PNG, or WebP image"}, 400
+
+    image_data = uploaded_photo.stream.read(MAX_PROFILE_PHOTO_BYTES + 1)
+    if not image_data:
+        return {"message": "Profile photo cannot be empty"}, 400
+    if len(image_data) > MAX_PROFILE_PHOTO_BYTES:
+        return {"message": "Profile photo must be 2 MB or smaller"}, 400
+    if not valid_image_signature(image_data, mime_type):
+        return {"message": "The selected file is not a valid image"}, 400
+
+    if professional_profile.photo is None:
+        professional_profile.photo = ProfessionalPhoto(
+            image_data=image_data,
+            mime_type=mime_type,
+        )
+    else:
+        professional_profile.photo.image_data = image_data
+        professional_profile.photo.mime_type = mime_type
+    db.session.commit()
+
+    return {
+        "message": "Profile photo updated successfully",
+        "profile_image_url": profile_photo_url(professional_profile),
+    }, 200
+
+
+@professional.delete("/profile/photo")
+@roles_required("professional")
+def delete_profile_photo():
+    user_id = int(get_jwt_identity())
+    professional_profile = db.session.scalar(
+        db.select(Professional).where(Professional.user_id == user_id)
+    )
+    if professional_profile is None:
+        return {"message": "Professional profile not found"}, 404
+    if professional_profile.photo is None:
+        return {"message": "Profile photo not found"}, 404
+
+    db.session.delete(professional_profile.photo)
+    db.session.commit()
+    return {"message": "Profile photo removed successfully"}, 200
+
+
+@professional.get("/profiles/<int:professional_id>/photo")
+def public_profile_photo(professional_id):
+    photo = db.session.scalar(
+        db.select(ProfessionalPhoto).where(
+            ProfessionalPhoto.professional_id == professional_id
+        )
+    )
+    if photo is None:
+        return {"message": "Profile photo not found"}, 404
+
+    return Response(
+        photo.image_data,
+        mimetype=photo.mime_type,
+        headers={
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @professional.get("/service-areas")

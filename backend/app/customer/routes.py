@@ -55,11 +55,49 @@ def dashboard():
             ServiceRequest.status == "completed",
         )
     )
+    active_booking = db.session.scalar(
+        db.select(ServiceRequest)
+        .where(
+            ServiceRequest.customer_id == profile.id,
+            ServiceRequest.status.in_(["pending", "accepted"]),
+        )
+        .order_by(
+            db.case((ServiceRequest.status == "accepted", 0), else_=1),
+            ServiceRequest.created_at.desc(),
+        )
+    )
 
     return {
         "city": profile.city,
         "open_bookings": open_bookings,
         "completed_bookings": completed_bookings,
+        "active_booking": (
+            {
+                "id": active_booking.id,
+                "service": active_booking.service_type.name,
+                "status": active_booking.status,
+                "scheduled_for": (
+                    active_booking.scheduled_for.isoformat()
+                    if active_booking.scheduled_for
+                    else None
+                ),
+                "professional": (
+                    {
+                        "name": active_booking.professional.user.username,
+                        "profile_image_url": (
+                            f"/api/professional/profiles/"
+                            f"{active_booking.professional.id}/photo"
+                            if active_booking.professional.photo
+                            else None
+                        ),
+                    }
+                    if active_booking.professional
+                    else None
+                ),
+            }
+            if active_booking
+            else None
+        ),
     }, 200
 
 
@@ -464,6 +502,11 @@ def bookings():
             "experience_years": booking.professional.experience_years,
             "average_rating": average_rating,
             "review_count": review_count,
+            "profile_image_url": (
+                f"/api/professional/profiles/{booking.professional.id}/photo"
+                if booking.professional.photo
+                else None
+            ),
         }
 
     return {

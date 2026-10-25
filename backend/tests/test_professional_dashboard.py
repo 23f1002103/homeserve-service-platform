@@ -1,3 +1,4 @@
+import io
 import unittest
 
 from flask_jwt_extended import create_access_token
@@ -102,6 +103,20 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             professional = db.session.scalar(db.select(Professional))
             self.assertEqual(professional.experience_years, 5)
             self.assertEqual(professional.city, "Mysuru")
+
+    def test_professional_photo_rejects_non_image_content(self):
+        response = self.client.put(
+            "/api/professional/profile/photo",
+            headers={"Authorization": f"Bearer {self.professional_token}"},
+            data={"photo": (io.BytesIO(b"not really an image"), "profile.png")},
+            content_type="multipart/form-data",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.get_json()["message"],
+            "The selected file is not a valid image",
+        )
 
     def test_customer_cannot_view_professional_dashboard(self):
         response = self.client.get(
@@ -225,6 +240,17 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             )
 
         headers = {"Authorization": f"Bearer {self.professional_token}"}
+        uploaded_photo = self.client.put(
+            "/api/professional/profile/photo",
+            headers=headers,
+            data={
+                "photo": (
+                    io.BytesIO(b"\xff\xd8\xff\xe0HomeServe test image"),
+                    "profile.jpg",
+                )
+            },
+            content_type="multipart/form-data",
+        )
         available = self.client.get("/api/professional/jobs", headers=headers)
         accepted = self.client.patch(
             f"/api/professional/jobs/{job_id}/accept", headers=headers
@@ -275,6 +301,10 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         dashboard_response = self.client.get(
             "/api/professional/dashboard", headers=headers
         )
+        customer_dashboard_response = self.client.get(
+            "/api/customer/dashboard",
+            headers={"Authorization": f"Bearer {customer_token}"},
+        )
         earnings_response = self.client.get(
             "/api/professional/earnings", headers=headers
         )
@@ -310,6 +340,7 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         )
 
         self.assertEqual(available.status_code, 200)
+        self.assertEqual(uploaded_photo.status_code, 200)
         self.assertEqual(len(available.get_json()["available_jobs"]), 2)
         self.assertNotIn("directions_url", available.get_json()["available_jobs"][0])
         self.assertEqual(accepted.status_code, 200)
@@ -323,6 +354,14 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(assigned_professional["phone_number"], "9876543210")
         self.assertEqual(assigned_professional["experience_years"], 5)
         self.assertEqual(assigned_professional["review_count"], 0)
+        self.assertEqual(
+            assigned_professional["profile_image_url"],
+            f"/api/professional/profiles/{first_professional_id}/photo",
+        )
+        public_photo = self.client.get(assigned_professional["profile_image_url"])
+        self.assertEqual(public_photo.status_code, 200)
+        self.assertEqual(public_photo.mimetype, "image/jpeg")
+        self.assertTrue(public_photo.data.startswith(b"\xff\xd8\xff"))
         self.assertNotIn("email", assigned_professional)
         self.assertNotIn("address", assigned_professional)
         self.assertEqual(notification_response.status_code, 200)
@@ -347,7 +386,25 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(profile_response.status_code, 200)
         self.assertEqual(profile_response.get_json()["profile"]["average_rating"], 5.0)
         self.assertEqual(profile_response.get_json()["profile"]["review_count"], 1)
+        self.assertEqual(
+            profile_response.get_json()["profile"]["profile_image_url"],
+            f"/api/professional/profiles/{first_professional_id}/photo",
+        )
         self.assertEqual(dashboard_response.get_json()["today_earning"], "85.00")
+        self.assertEqual(
+            customer_dashboard_response.get_json()["active_booking"]["id"],
+            second_job_id,
+        )
+        self.assertEqual(
+            customer_dashboard_response.get_json()["active_booking"]["status"],
+            "accepted",
+        )
+        self.assertEqual(
+            customer_dashboard_response.get_json()["active_booking"]["professional"][
+                "profile_image_url"
+            ],
+            f"/api/professional/profiles/{first_professional_id}/photo",
+        )
         self.assertEqual(earnings_response.get_json()["total_earning"], "85.00")
         self.assertEqual(len(earnings_response.get_json()["completed_jobs"]), 1)
         self.assertEqual(admin_dashboard.get_json()["revenue"]["total"], "15.00")
