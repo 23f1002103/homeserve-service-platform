@@ -192,6 +192,19 @@ For the Web service, generate a public domain and configure `/api/health` as
 the health-check path. PostgreSQL migrations and the idempotent administrator
 seed run automatically when the Web service starts.
 
+## Free demo deployment
+
+The included `render.yaml` deploys the application as a free Render web
+service in Singapore. Use a free Neon PostgreSQL database and paste its pooled
+connection string into Render's `DATABASE_URL` prompt.
+
+The free deployment sets `CELERY_TASK_ALWAYS_EAGER=true`, so booking-triggered
+tasks run inside the web process without Redis. Render's free web service does
+not provide a continuously running Celery worker, and it blocks common SMTP
+ports, so scheduled reminders and Gmail delivery remain local-development
+features unless paid background infrastructure or an HTTP email provider is
+added later.
+
 ## Security notes
 
 - Passwords are stored as hashes, never as plain text.

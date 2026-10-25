@@ -45,6 +45,12 @@ class Config:
             "redis://localhost:6379/1",
         ),
         "task_ignore_result": True,
+        # Free hosts can run queued tasks immediately without a Redis worker.
+        # Local development keeps this false and uses the real Celery worker.
+        "task_always_eager": os.getenv(
+            "CELERY_TASK_ALWAYS_EAGER",
+            "false",
+        ).lower() == "true",
         "timezone": os.getenv("CELERY_TIMEZONE", "Asia/Kolkata"),
         "beat_schedule": {
             "check-upcoming-professional-jobs": {
