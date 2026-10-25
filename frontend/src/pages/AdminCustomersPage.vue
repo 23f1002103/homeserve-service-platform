@@ -1,6 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import ListPagination from '../components/ListPagination.vue'
+import { usePagination } from '../utils/pagination'
 
 const customers = ref([])
 const errorMessage = ref('')
@@ -9,6 +11,8 @@ const visibleCustomers = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   return customers.value.filter(customer => [customer.username, customer.email, customer.phone_number, customer.city, customer.state, customer.pin_code].some(value => String(value || '').toLowerCase().includes(query)))
 })
+const { currentPage, pageCount, paginatedItems: paginatedCustomers, resetPage } = usePagination(visibleCustomers, 10)
+watch(searchQuery, resetPage)
 
 async function loadCustomers() {
   try {
@@ -30,7 +34,7 @@ onMounted(loadCustomers)
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <label class="list-search standalone-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search customers or locations" aria-label="Search customers" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label>
       <section class="admin-records customer-records">
-        <article v-for="customer in visibleCustomers" :key="customer.id">
+        <article v-for="customer in paginatedCustomers" :key="customer.id">
           <span class="list-monogram">{{ customer.username.charAt(0).toUpperCase() }}</span>
           <div class="record-identity"><strong>{{ customer.username }}</strong><small>{{ customer.email }}</small></div>
           <div><small>Phone</small><strong>{{ customer.phone_number || 'Not provided' }}</strong></div>
@@ -39,6 +43,7 @@ onMounted(loadCustomers)
         </article>
         <p v-if="!visibleCustomers.length && !errorMessage" class="records-empty">{{ searchQuery ? 'No customers match your search.' : 'No customers have registered yet.' }}</p>
       </section>
+      <ListPagination v-model:page="currentPage" :page-count="pageCount" :total="visibleCustomers.length" :visible-count="paginatedCustomers.length" label="customers" />
     </main>
   </div>
 </template>

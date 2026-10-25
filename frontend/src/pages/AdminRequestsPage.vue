@@ -1,6 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import ListPagination from '../components/ListPagination.vue'
+import { usePagination } from '../utils/pagination'
 import { statusLabel } from '../utils/status'
 
 const requests = ref([])
@@ -15,6 +17,8 @@ const visibleRequests = computed(() => {
     return matchesFilter && matchesSearch
   })
 })
+const { currentPage, pageCount, paginatedItems: paginatedRequests, resetPage } = usePagination(visibleRequests, 10)
+watch([filter, searchQuery], resetPage)
 
 function formatDate(value) {
   if (!value) return 'Not scheduled'
@@ -41,7 +45,7 @@ onMounted(loadRequests)
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <div class="list-toolbar"><div class="admin-filters"><button v-for="option in ['all', 'pending', 'accepted', 'completed', 'cancelled']" :key="option" :class="{ active: filter === option }" @click="filter = option">{{ option === 'all' ? 'All' : statusLabel(option) }}</button></div><label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search ID, service or person" aria-label="Search requests" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label></div>
       <section class="request-records">
-        <article v-for="request in visibleRequests" :key="request.id">
+        <article v-for="request in paginatedRequests" :key="request.id">
           <code>#{{ String(request.id).padStart(4, '0') }}</code>
           <div><small>Service</small><strong>{{ request.service }}</strong></div>
           <div><small>Customer</small><strong>{{ request.customer }}</strong></div>
@@ -51,6 +55,7 @@ onMounted(loadRequests)
         </article>
         <p v-if="!visibleRequests.length && !errorMessage" class="records-empty">No service requests match this filter.</p>
       </section>
+      <ListPagination v-model:page="currentPage" :page-count="pageCount" :total="visibleRequests.length" :visible-count="paginatedRequests.length" label="requests" />
     </main>
   </div>
 </template>

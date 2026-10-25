@@ -1,6 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import ListPagination from '../components/ListPagination.vue'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
+import { usePagination } from '../utils/pagination'
 
 const areas = ref([])
 const selectedAreaIds = ref([])
@@ -11,10 +13,35 @@ const areaChoices = ref(null)
 const detecting = ref(false)
 const saving = ref(false)
 const searchQuery = ref('')
+const stateFilter = ref('all')
+const cityFilter = ref('all')
+const normalized = (value) => String(value || '').trim().toLowerCase()
+const stateOptions = computed(() => [...new Map(
+  areas.value.map(area => [normalized(area.state), area.state]),
+).entries()].map(([value, label]) => ({ value, label })).sort((first, second) => first.label.localeCompare(second.label)))
+const cityOptions = computed(() => {
+  if (stateFilter.value === 'all') return []
+  return [...new Map(
+    areas.value
+      .filter(area => normalized(area.state) === stateFilter.value)
+      .map(area => [normalized(area.city), area.city]),
+  ).entries()].map(([value, label]) => ({ value, label })).sort((first, second) => first.label.localeCompare(second.label))
+})
 const visibleAreas = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
-  return areas.value.filter(area => [area.city, area.state, area.pin_code].some(value => String(value || '').toLowerCase().includes(query)))
+  return areas.value
+    .filter(area => stateFilter.value === 'all' || normalized(area.state) === stateFilter.value)
+    .filter(area => cityFilter.value === 'all' || normalized(area.city) === cityFilter.value)
+    .filter(area => [area.city, area.state, area.pin_code].some(value => String(value || '').toLowerCase().includes(query)))
+    .sort((first, second) => first.state.localeCompare(second.state) || first.city.localeCompare(second.city) || first.pin_code.localeCompare(second.pin_code))
 })
+const { currentPage, pageCount, paginatedItems: paginatedAreas, resetPage } = usePagination(visibleAreas, 12)
+
+watch(stateFilter, () => {
+  cityFilter.value = 'all'
+  resetPage()
+})
+watch([cityFilter, searchQuery], resetPage)
 
 function authHeaders(includeJson = false) {
   const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
@@ -139,9 +166,14 @@ onMounted(loadAreas)
         <button type="button" :disabled="detecting" @click="detectLocation">{{ detecting ? 'Detecting…' : 'Detect my current area' }}</button>
         <button type="button" :disabled="saving" @click="saveAreas">{{ saving ? 'Saving…' : 'Save selected areas' }}</button>
       </div>
-      <label class="list-search standalone-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search city, state or PIN" aria-label="Search service areas" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label>
+      <section class="area-filter-panel" aria-label="Filter service areas">
+        <label>State<select v-model="stateFilter"><option value="all">All states</option><option v-for="state in stateOptions" :key="state.value" :value="state.value">{{ state.label }}</option></select></label>
+        <label>City<select v-model="cityFilter" :disabled="stateFilter === 'all'"><option value="all">{{ stateFilter === 'all' ? 'Select a state first' : 'All cities' }}</option><option v-for="city in cityOptions" :key="city.value" :value="city.value">{{ city.label }}</option></select></label>
+        <label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search PIN or place" aria-label="Search service areas" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label>
+        <span><strong>{{ selectedAreaIds.length }}</strong> selected</span>
+      </section>
       <section ref="areaChoices" class="area-choice-grid">
-        <label v-for="area in visibleAreas" :key="area.id" :class="{ 'is-selected': selectedAreaIds.includes(area.id) }">
+        <label v-for="area in paginatedAreas" :key="area.id" :class="{ 'is-selected': selectedAreaIds.includes(area.id) }">
           <input v-model="selectedAreaIds" type="checkbox" :value="area.id" />
           <span><strong>{{ area.city }}</strong><small>{{ area.state }}</small><code>{{ area.pin_code }}</code></span>
         </label>
@@ -149,6 +181,7 @@ onMounted(loadAreas)
           <strong>{{ searchQuery ? 'No areas match your search.' : 'No service areas are available.' }}</strong><p v-if="!searchQuery">The admin must create service areas first.</p>
         </div>
       </section>
+      <ListPagination v-model:page="currentPage" :page-count="pageCount" :total="visibleAreas.length" :visible-count="paginatedAreas.length" label="service areas" />
     </main>
   </div>
 </template>

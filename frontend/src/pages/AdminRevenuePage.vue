@@ -1,6 +1,8 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import ListPagination from '../components/ListPagination.vue'
+import { usePagination } from '../utils/pagination'
 
 const report = ref(null)
 const startDate = ref('')
@@ -8,6 +10,8 @@ const endDate = ref('')
 const loading = ref(false)
 const exporting = ref(false)
 const errorMessage = ref('')
+const transactions = computed(() => report.value?.transactions || [])
+const { currentPage, pageCount, paginatedItems: paginatedTransactions, resetPage } = usePagination(transactions, 10)
 
 function money(value) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0))
@@ -31,6 +35,7 @@ async function loadRevenue() {
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Could not load revenue')
     report.value = data
+    resetPage()
     startDate.value = data.range.start
     endDate.value = data.range.end
   } catch (error) {
@@ -100,7 +105,7 @@ onMounted(loadRevenue)
         </section>
 
         <section class="revenue-ledger">
-          <article v-for="transaction in report.transactions" :key="transaction.booking_id">
+          <article v-for="transaction in paginatedTransactions" :key="transaction.booking_id">
             <code>#{{ String(transaction.booking_id).padStart(4, '0') }}</code>
             <div><strong>{{ transaction.service }}</strong><small>{{ transaction.customer }} → {{ transaction.professional }}</small></div>
             <div><small>Completed</small><strong>{{ formatDate(transaction.completed_at) }}</strong></div>
@@ -110,6 +115,7 @@ onMounted(loadRevenue)
           </article>
           <div v-if="!report.transactions.length" class="booking-empty-state"><strong>No revenue in this range.</strong><p>Try a wider date range or wait for paid jobs to be completed.</p></div>
         </section>
+        <ListPagination v-model:page="currentPage" :page-count="pageCount" :total="transactions.length" :visible-count="paginatedTransactions.length" label="transactions" />
       </template>
     </main>
   </div>

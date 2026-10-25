@@ -1,6 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import ListPagination from '../components/ListPagination.vue'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
+import { usePagination } from '../utils/pagination'
 import { statusLabel } from '../utils/status'
 
 const jobs = ref([])
@@ -17,6 +19,10 @@ const searchQuery = ref('')
 const matchesSearch = (job) => [job.id, job.service, job.customer, job.customer_phone, job.address, job.description, job.area, job.status].some(value => String(value || '').toLowerCase().includes(searchQuery.value.toLowerCase().trim()))
 const visibleJobs = computed(() => jobs.value.filter(job => (filter.value === 'all' || job.status === filter.value) && matchesSearch(job)))
 const visibleAvailableJobs = computed(() => availableJobs.value.filter(matchesSearch))
+const { currentPage: availablePage, pageCount: availablePageCount, paginatedItems: paginatedAvailableJobs, resetPage: resetAvailablePage } = usePagination(visibleAvailableJobs, 6)
+const { currentPage: jobsPage, pageCount: jobsPageCount, paginatedItems: paginatedJobs, resetPage: resetJobsPage } = usePagination(visibleJobs, 8)
+watch(searchQuery, () => { resetAvailablePage(); resetJobsPage() })
+watch(filter, resetJobsPage)
 function formatDate(value) { return value ? new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not scheduled' }
 
 async function loadJobs() {
@@ -81,16 +87,18 @@ onMounted(loadJobs)
     <section v-if="activeSection === 'available'" class="available-job-list">
       <p v-if="!canAcceptJobs" class="job-board-notice">Your account must be approved by the admin before you can accept customer work.</p>
       <p v-if="hasActiveJob" class="job-board-notice">Complete your accepted job before taking another booking.</p>
-      <article v-for="job in visibleAvailableJobs" :key="job.id"><header><code>#{{ String(job.id).padStart(4, '0') }}</code><span>{{ job.area }}</span></header><div><p class="workbench-label">{{ job.service }}</p><h2>{{ job.description }}</h2></div><footer><time>{{ formatDate(job.scheduled_for) }}</time><strong>{{ job.price ? `₹${job.price}` : 'Price unavailable' }}</strong><button type="button" :disabled="acceptingJobId === job.id" @click="acceptJob(job)">{{ acceptingJobId === job.id ? 'Accepting…' : 'Accept job' }}</button></footer></article>
+      <article v-for="job in paginatedAvailableJobs" :key="job.id"><header><code>#{{ String(job.id).padStart(4, '0') }}</code><span>{{ job.area }}</span></header><div><p class="workbench-label">{{ job.service }}</p><h2>{{ job.description }}</h2></div><footer><time>{{ formatDate(job.scheduled_for) }}</time><strong>{{ job.price ? `₹${job.price}` : 'Price unavailable' }}</strong><button type="button" :disabled="acceptingJobId === job.id" @click="acceptJob(job)">{{ acceptingJobId === job.id ? 'Accepting…' : 'Accept job' }}</button></footer></article>
       <div v-if="!visibleAvailableJobs.length && canAcceptJobs && !errorMessage" class="empty-job-sheet"><span></span><div><h3>{{ searchQuery ? 'No jobs match your search.' : hasActiveJob ? 'Finish your current job first.' : 'No matching requests right now.' }}</h3><p>{{ hasActiveJob ? 'New matching work will appear again after the accepted job is completed.' : 'Only paid requests matching your service type and selected areas appear here.' }}</p></div></div>
+      <ListPagination v-model:page="availablePage" :page-count="availablePageCount" :total="visibleAvailableJobs.length" :visible-count="paginatedAvailableJobs.length" label="available jobs" />
     </section>
 
     <section v-else>
       <div class="admin-filters"><button v-for="option in ['all', 'accepted', 'completed']" :key="option" :class="{ active: filter === option }" @click="filter = option">{{ option === 'all' ? 'All' : statusLabel(option) }}</button></div>
       <div class="job-list role-job-list">
-        <article v-for="job in visibleJobs" :key="job.id"><span class="job-number">#{{ String(job.id).padStart(3, '0') }}</span><div><strong>{{ job.service }}</strong><small>{{ job.customer }} · {{ job.address }}</small><a v-if="job.customer_phone" class="job-customer-phone" :href="`tel:${job.customer_phone}`">Call {{ job.customer_phone }}</a></div><time>{{ formatDate(job.scheduled_for) }}</time><span class="job-status">{{ statusLabel(job.status) }}</span><div class="job-row-actions"><a v-if="job.directions_url" class="job-direction-link" :href="job.directions_url" target="_blank" rel="noopener noreferrer" aria-label="Open customer location in Google Maps"><span class="job-direction-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg></span><span><strong>Directions</strong><small>Google Maps</small></span><b aria-hidden="true">↗</b></a><button v-if="job.status === 'accepted'" class="job-complete-button" type="button" :disabled="completingJobId === job.id" @click="completeJob(job)">{{ completingJobId === job.id ? 'Saving…' : 'Mark completed' }}</button></div></article>
+        <article v-for="job in paginatedJobs" :key="job.id"><span class="job-number">#{{ String(job.id).padStart(3, '0') }}</span><div><strong>{{ job.service }}</strong><small>{{ job.customer }} · {{ job.address }}</small><a v-if="job.customer_phone" class="job-customer-phone" :href="`tel:${job.customer_phone}`">Call {{ job.customer_phone }}</a></div><time>{{ formatDate(job.scheduled_for) }}</time><span class="job-status">{{ statusLabel(job.status) }}</span><div class="job-row-actions"><a v-if="job.directions_url" class="job-direction-link" :href="job.directions_url" target="_blank" rel="noopener noreferrer" aria-label="Open customer location in Google Maps"><span class="job-direction-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg></span><span><strong>Directions</strong><small>Google Maps</small></span><b aria-hidden="true">↗</b></a><button v-if="job.status === 'accepted'" class="job-complete-button" type="button" :disabled="completingJobId === job.id" @click="completeJob(job)">{{ completingJobId === job.id ? 'Saving…' : 'Mark completed' }}</button></div></article>
         <div v-if="!visibleJobs.length && !errorMessage" class="empty-job-sheet"><span></span><div><h3>No assigned jobs here.</h3><p>Accept a matching request from the available-jobs tab.</p></div></div>
       </div>
+      <ListPagination v-model:page="jobsPage" :page-count="jobsPageCount" :total="visibleJobs.length" :visible-count="paginatedJobs.length" label="assigned jobs" />
     </section>
   </main></div>
 </template>

@@ -1,7 +1,9 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import CustomerHeader from '../components/CustomerHeader.vue'
+import ListPagination from '../components/ListPagination.vue'
+import { usePagination } from '../utils/pagination'
 import { statusLabel } from '../utils/status'
 const bookings = ref([])
 const filter = ref('all')
@@ -24,6 +26,8 @@ const visibleBookings = computed(() => {
     return matchesFilter && matchesSearch
   })
 })
+const { currentPage, pageCount, paginatedItems: paginatedBookings, resetPage } = usePagination(visibleBookings, 8)
+watch([filter, searchQuery], () => { resetPage(); expandedBookingId.value = null })
 const openBookingCount = computed(() => bookings.value.filter(item => ['pending', 'accepted'].includes(item.status)).length)
 function formatDate(value) { return value ? new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Not scheduled' }
 function paymentLabel(value) { return value === 'demo_upi' ? 'HomeServe Demo UPI' : 'Payment method unavailable' }
@@ -115,7 +119,7 @@ onMounted(loadBookings)
     <section class="booking-overview-strip"><div><small>TOTAL REQUESTS</small><strong>{{ bookings.length }}</strong></div><div><small>OPEN NOW</small><strong>{{ openBookingCount }}</strong></div><RouterLink to="/customer/services">Book another service →</RouterLink></section>
     <div class="list-toolbar booking-filters"><div class="admin-filters"><button v-for="option in ['all', 'payment_pending', 'pending', 'accepted', 'completed', 'cancelled']" :key="option" :class="{ active: filter === option }" @click="filter = option">{{ option.replace('_', ' ') }}</button></div><label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search bookings" aria-label="Search bookings" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label></div>
     <section class="booking-compact-list">
-      <article v-for="booking in visibleBookings" :key="booking.id" :class="{ 'is-open': expandedBookingId === booking.id }">
+      <article v-for="booking in paginatedBookings" :key="booking.id" :class="{ 'is-open': expandedBookingId === booking.id }">
         <button class="booking-compact-summary" type="button" @click="toggleBooking(booking.id)">
           <span class="booking-compact-id"><code>#{{ String(booking.id).padStart(4, '0') }}</code><strong>{{ booking.service }}</strong></span>
           <span><small>SCHEDULE</small><strong>{{ formatDate(booking.scheduled_for) }}</strong></span>
@@ -142,6 +146,7 @@ onMounted(loadBookings)
       </article>
       <div v-if="!visibleBookings.length && !errorMessage" class="booking-empty-state"><strong>No bookings here yet.</strong><p>Choose a household service whenever your home needs care.</p><RouterLink to="/customer/services">Explore services</RouterLink></div>
     </section>
+    <ListPagination v-model:page="currentPage" :page-count="pageCount" :total="visibleBookings.length" :visible-count="paginatedBookings.length" label="bookings" />
   </main>
   <ConfirmActionModal
     :open="Boolean(pendingCancelBooking)"
