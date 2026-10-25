@@ -385,7 +385,12 @@
 .active-booking-tracker > header { display: flex; gap: 25px; justify-content: space-between; align-items: end; padding-bottom: 24px; border-bottom: 1px solid rgb(255 255 255 / 17%); }
 .active-booking-tracker h2 { margin: 6px 0 0; color: #fff; font-size: clamp(2rem, 4vw, 3.2rem); }
 .active-booking-tracker .workbench-label { color: #e29b70; }
-.active-booking-tracker > header a { color: #fff; font-size: 0.72rem; font-weight: 850; }
+.active-booking-tracker > header a { color: #fff; font-size: 0.72rem; font-weight: 850; white-space: nowrap; }
+.tracker-header-actions { display: flex; gap: 20px; align-items: center; }
+.tracker-pagination { display: flex; gap: 9px; align-items: center; }
+.tracker-pagination button { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid rgb(255 255 255 / 34%); border-radius: 50%; color: #fff; background: transparent; font-size: 0.9rem; }
+.tracker-pagination button:hover { color: #183a31; background: #e29b70; }
+.tracker-pagination span { min-width: 40px; color: #d3dfd9; font: 0.66rem ui-monospace, monospace; text-align: center; }
 .active-booking-summary { display: grid; grid-template-columns: 1fr auto; gap: 35px; align-items: center; padding: 26px 0 34px; }
 .active-booking-summary > div:first-child { display: grid; gap: 7px; }
 .active-booking-summary small { color: #9fb4aa; font-size: 0.58rem; font-weight: 850; letter-spacing: 0.1em; }
@@ -968,6 +973,7 @@
   .customer-glance { min-height: 290px; }
   .customer-glance strong { font-size: 6rem; }
   .active-booking-tracker > header { align-items: start; flex-direction: column; }
+  .tracker-header-actions { width: 100%; justify-content: space-between; }
   .delivery-progress { gap: 14px; grid-template-columns: 1fr; }
   .delivery-progress::before,
   .delivery-progress::after { display: none; }

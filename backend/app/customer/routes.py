@@ -55,48 +55,51 @@ def dashboard():
             ServiceRequest.status == "completed",
         )
     )
-    active_booking = db.session.scalar(
+    active_bookings = db.session.scalars(
         db.select(ServiceRequest)
         .where(
             ServiceRequest.customer_id == profile.id,
             ServiceRequest.status.in_(["pending", "accepted"]),
         )
-        .order_by(
-            db.case((ServiceRequest.status == "accepted", 0), else_=1),
-            ServiceRequest.created_at.desc(),
-        )
-    )
+        .order_by(ServiceRequest.created_at.desc(), ServiceRequest.id.desc())
+    ).all()
+
+    def serialize_active_booking(booking):
+        return {
+            "id": booking.id,
+            "service": booking.service_type.name,
+            "status": booking.status,
+            "scheduled_for": (
+                booking.scheduled_for.isoformat()
+                if booking.scheduled_for
+                else None
+            ),
+            "professional": (
+                {
+                    "name": booking.professional.user.username,
+                    "profile_image_url": (
+                        f"/api/professional/profiles/"
+                        f"{booking.professional.id}/photo"
+                        if booking.professional.photo
+                        else None
+                    ),
+                }
+                if booking.professional
+                else None
+            ),
+        }
+
+    serialized_active_bookings = [
+        serialize_active_booking(booking) for booking in active_bookings
+    ]
 
     return {
         "city": profile.city,
         "open_bookings": open_bookings,
         "completed_bookings": completed_bookings,
+        "active_bookings": serialized_active_bookings,
         "active_booking": (
-            {
-                "id": active_booking.id,
-                "service": active_booking.service_type.name,
-                "status": active_booking.status,
-                "scheduled_for": (
-                    active_booking.scheduled_for.isoformat()
-                    if active_booking.scheduled_for
-                    else None
-                ),
-                "professional": (
-                    {
-                        "name": active_booking.professional.user.username,
-                        "profile_image_url": (
-                            f"/api/professional/profiles/"
-                            f"{active_booking.professional.id}/photo"
-                            if active_booking.professional.photo
-                            else None
-                        ),
-                    }
-                    if active_booking.professional
-                    else None
-                ),
-            }
-            if active_booking
-            else None
+            serialized_active_bookings[0] if serialized_active_bookings else None
         ),
     }, 200
 

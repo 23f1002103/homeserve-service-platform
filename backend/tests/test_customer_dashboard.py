@@ -81,6 +81,47 @@ class CustomerDashboardTestCase(unittest.TestCase):
             "/api/customer/dashboard", headers=headers
         ).get_json()
         self.assertIsNone(dashboard["active_booking"])
+        self.assertEqual(dashboard["active_bookings"], [])
+
+    def test_dashboard_returns_every_active_booking_newest_first(self):
+        with self.app.app_context():
+            customer = db.session.scalar(db.select(Customer))
+            service = db.session.scalar(db.select(ServiceType))
+            area = db.session.scalar(db.select(ServiceArea))
+            first = ServiceRequest(
+                customer_id=customer.id,
+                service_type_id=service.id,
+                service_area_id=area.id,
+                service_address="12 Main Road",
+                status="accepted",
+            )
+            db.session.add(first)
+            db.session.flush()
+            second = ServiceRequest(
+                customer_id=customer.id,
+                service_type_id=service.id,
+                service_area_id=area.id,
+                service_address="45 Second Road",
+                status="pending",
+            )
+            db.session.add(second)
+            db.session.commit()
+            first_id = first.id
+            second_id = second.id
+
+        response = self.client.get(
+            "/api/customer/dashboard",
+            headers={"Authorization": f"Bearer {self.token}"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        dashboard = response.get_json()
+        self.assertEqual(dashboard["open_bookings"], 2)
+        self.assertEqual(
+            [booking["id"] for booking in dashboard["active_bookings"]],
+            [second_id, first_id],
+        )
+        self.assertEqual(dashboard["active_booking"]["id"], second_id)
 
     def test_customer_can_update_profile_fields(self):
         response = self.client.patch(
