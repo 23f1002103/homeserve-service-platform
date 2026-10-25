@@ -304,6 +304,11 @@ onUnmounted(() => clearInterval(timerId))
             <li><span>02</span><div><strong>Professional match</strong><small>After you submit</small></div></li>
             <li><span>03</span><div><strong>Confirmation</strong><small>Track under My bookings</small></div></li>
           </ol>
+          <div class="booking-intro-summary">
+            <small>YOU'RE BOOKING</small>
+            <strong>{{ service.name }}</strong>
+            <p>Share the location and problem details. We’ll handle the professional match and keep every update in My bookings.</p>
+          </div>
         </div>
 
         <form class="booking-form-panel" @submit.prevent="submitBooking">
