@@ -641,6 +641,12 @@
 .booking-form-panel textarea:focus { border-color: #285b47; outline: 2px solid rgb(40 91 71 / 13%); }
 .booking-form-panel label > small { justify-self: end; color: #828b85; font-weight: 500; }
 .booking-area-warning { padding: 15px; border-left: 4px solid #a84f31; color: #70402f; background: #f1dfd7; font-size: 0.78rem; line-height: 1.5; }
+.booking-location-methods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 6px; border: 1px solid #b9c1bb; background: #eeece5; }
+.booking-location-methods button { display: grid; gap: 4px; padding: 14px; border: 1px solid transparent; color: #56635c; background: transparent; text-align: left; }
+.booking-location-methods button strong { font-size: 0.72rem; }
+.booking-location-methods button small { color: #7c8781; font-size: 0.61rem; }
+.booking-location-methods button.is-active { border-color: #315b4a; color: #fff; background: #315b4a; }
+.booking-location-methods button.is-active small { color: #c5d4cd; }
 .booking-location-check { display: grid; grid-template-columns: 1fr auto; gap: 22px; align-items: center; padding: 18px; border: 1px dashed #9ca8a1; background: #f3f0e8; }
 .booking-location-check.is-verified { border-style: solid; border-color: #83a08f; background: #e7eee9; }
 .booking-location-check > div { display: grid; gap: 5px; }
@@ -966,6 +972,7 @@
   .booking-checkout__intro li { grid-template-columns: 35px 1fr; }
   .booking-location-check { grid-template-columns: 1fr; }
   .booking-location-check button { justify-self: start; }
+  .booking-location-methods { grid-template-columns: 1fr; }
   .booking-overview-strip { grid-template-columns: repeat(2, 1fr); }
   .booking-overview-strip > a { grid-column: 1 / -1; justify-self: start; padding: 16px 0; }
   .booking-compact-summary { grid-template-columns: 1fr auto; gap: 10px; padding: 15px 12px; }

@@ -194,6 +194,69 @@ class CustomerDashboardTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_customer_can_verify_and_book_a_manual_service_address(self):
+        headers = {"Authorization": f"Bearer {self.token}"}
+        with self.app.app_context():
+            service_id = db.session.scalar(db.select(ServiceType.id))
+            area_id = db.session.scalar(db.select(ServiceArea.id))
+
+        verification = self.client.post(
+            "/api/customer/verify-service-area",
+            headers=headers,
+            json={"pin_code": "560001"},
+        )
+        response = self.client.post(
+            "/api/customer/bookings",
+            headers=headers,
+            json={
+                "service_type_id": service_id,
+                "scheduled_for": "2099-01-20T10:30",
+                "service_address": "88 Manual Address, Bengaluru",
+                "service_pin_code": "560001",
+                "service_area_id": area_id,
+                "description": "Manual-address booking test",
+            },
+        )
+
+        self.assertEqual(verification.status_code, 200)
+        self.assertEqual(verification.get_json()["matched_area"]["id"], area_id)
+        self.assertEqual(response.status_code, 201)
+        with self.app.app_context():
+            booking = db.session.get(ServiceRequest, response.get_json()["booking_id"])
+            self.assertIsNone(booking.latitude)
+            self.assertIsNone(booking.longitude)
+            self.assertEqual(booking.service_area_id, area_id)
+
+    def test_manual_service_area_verification_rejects_unavailable_pin(self):
+        response = self.client.post(
+            "/api/customer/verify-service-area",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={"pin_code": "999999"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIsNone(response.get_json()["matched_area"])
+
+    def test_manual_booking_cannot_use_an_area_id_with_a_different_pin(self):
+        with self.app.app_context():
+            service_id = db.session.scalar(db.select(ServiceType.id))
+            area_id = db.session.scalar(db.select(ServiceArea.id))
+
+        response = self.client.post(
+            "/api/customer/bookings",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={
+                "service_type_id": service_id,
+                "scheduled_for": "2099-01-20T10:30",
+                "service_address": "Outside service area",
+                "service_pin_code": "999999",
+                "service_area_id": area_id,
+                "description": "Forged service-area ID test",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+
     def test_booking_requires_complete_customer_profile(self):
         with self.app.app_context():
             customer = db.session.scalar(db.select(Customer))

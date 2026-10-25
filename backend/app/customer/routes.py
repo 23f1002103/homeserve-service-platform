@@ -219,6 +219,35 @@ def detect_service_area():
     }, 200
 
 
+@customer.post("/verify-service-area")
+@roles_required("customer")
+def verify_service_area():
+    data = request.get_json(silent=True) or {}
+    pin_code = (data.get("pin_code") or "").strip()
+    if not pin_code:
+        return {"message": "Enter the service address PIN code"}, 400
+
+    matched_area = db.session.scalar(
+        db.select(ServiceArea).where(ServiceArea.pin_code == pin_code)
+    )
+    if matched_area is None:
+        return {
+            "message": f"HomeServe is not available for PIN {pin_code} yet",
+            "matched_area": None,
+        }, 404
+
+    return {
+        "message": "Service area verified",
+        "matched_area": {
+            "id": matched_area.id,
+            "city": matched_area.city,
+            "state": matched_area.state,
+            "pin_code": matched_area.pin_code,
+        },
+        "match_method": "pin_code",
+    }, 200
+
+
 @customer.post("/bookings")
 @roles_required("customer")
 def create_booking():
@@ -261,9 +290,19 @@ def create_booking():
     if scheduled_for <= datetime.now():
         return {"message": "Schedule must be in the future"}, 400
 
+    coordinates_provided = latitude is not None or longitude is not None
+    if coordinates_provided and (latitude is None or longitude is None):
+        return {"message": "Both latitude and longitude are required"}, 400
+
     service_area = None
     if isinstance(service_area_id, int):
         service_area = db.session.get(ServiceArea, service_area_id)
+        if (
+            service_area is not None
+            and not coordinates_provided
+            and service_area.pin_code != service_pin_code
+        ):
+            service_area = None
     if service_area is None:
         service_area = db.session.scalar(
             db.select(ServiceArea).where(ServiceArea.pin_code == service_pin_code)
