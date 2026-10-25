@@ -32,6 +32,7 @@ class Config:
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
     # HomeServe keeps this percentage when a completed service is settled.
     PLATFORM_COMMISSION_PERCENT = os.getenv("PLATFORM_COMMISSION_PERCENT", "15")

@@ -127,6 +127,7 @@ def jobs():
                 "id": job.id,
                 "service": job.service_type.name,
                 "customer": job.customer.user.username,
+                "customer_phone": job.customer.user.phone_number,
                 "status": job.status,
                 "scheduled_for": (
                     job.scheduled_for.isoformat() if job.scheduled_for else None

@@ -30,6 +30,7 @@ class CustomerDashboardTestCase(unittest.TestCase):
             user = User(
                 username="test-customer",
                 email="customer@example.com",
+                phone_number="9999999999",
                 password_hash="not-used-in-this-test",
                 role="customer",
             )
@@ -184,6 +185,22 @@ class CustomerDashboardTestCase(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+    def test_booking_requires_complete_customer_profile(self):
+        with self.app.app_context():
+            customer = db.session.scalar(db.select(Customer))
+            customer.user.phone_number = None
+            service_id = db.session.scalar(db.select(ServiceType.id))
+            db.session.commit()
+
+        response = self.client.post(
+            "/api/customer/bookings",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={"service_type_id": service_id},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(response.get_json()["profile_incomplete"])
 
     @patch("app.customer.routes.get_address_from_coordinates")
     def test_detected_bangalore_matches_admin_bengaluru_area(self, reverse_lookup):

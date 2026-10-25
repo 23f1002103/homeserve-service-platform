@@ -380,6 +380,7 @@
 .role-section-heading > p { margin-bottom: 4px; color: #657069; line-height: 1.7; }
 .role-job-list { border-top: 2px solid #253a34; }
 .role-job-list article { grid-template-columns: 70px 1fr 150px 90px auto; }
+.job-customer-phone { display: block; width: fit-content; margin-top: 7px; color: #23634c; font-size: 0.76rem; font-weight: 800; }
 .job-complete-button { padding: 10px 13px; border: 1px solid #285b47; color: #fff; background: #285b47; font-size: 0.68rem; font-weight: 850; white-space: nowrap; }
 .job-complete-button:disabled { cursor: wait; opacity: 0.55; }
 .job-row-actions { display: flex; gap: 7px; align-items: center; justify-content: flex-end; }
@@ -455,6 +456,7 @@
 .detail-sheet__title > button { margin-top: 22px; padding: 10px 14px; border: 1px solid rgb(255 255 255 / 46%); color: #fff; background: transparent; font-size: 0.72rem; font-weight: 800; }
 .detail-sheet__title > button:hover { background: rgb(255 255 255 / 10%); }
 .profile-success { margin-bottom: 18px; padding: 13px 16px; color: #235c42; background: #dfece4; }
+.profile-completion-note { margin: 0 0 20px; padding: 14px 17px; border-left: 4px solid #d77a48; color: #70401f; background: #fff0df; line-height: 1.55; }
 .profile-edit-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; padding: 38px 45px; align-content: center; }
 .profile-edit-form label { display: grid; gap: 7px; color: #59665f; font-size: 0.7rem; font-weight: 800; }
 .profile-edit-form input { width: 100%; min-height: 45px; padding: 0 12px; border: 1px solid #b9c0ba; color: #182720; background: #fff; font: inherit; }
@@ -576,6 +578,11 @@
 .booking-selected-service small { color: #768079; font-size: 0.61rem; font-weight: 850; letter-spacing: 0.09em; }
 .booking-selected-service h2 { margin: 5px 0 0; font-size: clamp(2rem, 4vw, 3.3rem); }
 .booking-selected-service > strong { font-family: Georgia, serif; font-size: 1.55rem; font-weight: 500; }
+.booking-contact-summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 18px; border: 1px solid #ced5cf; background: #f5f5ef; }
+.booking-contact-summary div { display: grid; gap: 3px; }
+.booking-contact-summary small { color: #77817b; font-size: 0.61rem; font-weight: 850; letter-spacing: 0.09em; }
+.booking-contact-summary p { margin: 0; color: #5c6862; font-size: 0.85rem; }
+.booking-contact-summary a { color: #24634c; font-size: 0.78rem; font-weight: 850; }
 .booking-form-panel > label { display: grid; gap: 8px; color: #46564e; font-size: 0.72rem; font-weight: 850; }
 .booking-form-panel input,
 .booking-form-panel textarea { width: 100%; padding: 13px; border: 1px solid #b5bdb7; color: #17261f; background: #fff; font: inherit; resize: vertical; }

@@ -155,6 +155,16 @@ router.beforeEach((to) => {
 
   if (!token) return '/login'
   if (to.meta.role && user.role !== to.meta.role) return '/'
+  if (
+    user.role === 'customer'
+    && user.profile_complete === false
+    && to.name !== 'customer-profile'
+  ) {
+    return {
+      name: 'customer-profile',
+      query: { complete: '1', next: to.fullPath },
+    }
+  }
 
   return true
 })

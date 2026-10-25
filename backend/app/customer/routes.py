@@ -143,6 +143,11 @@ def create_booking():
     )
     if profile is None:
         return {"message": "Customer profile not found"}, 404
+    if not profile.is_complete():
+        return {
+            "message": "Complete your phone number and address before booking",
+            "profile_incomplete": True,
+        }, 409
 
     data = request.get_json(silent=True) or {}
     service_type_id = data.get("service_type_id")
@@ -483,6 +488,7 @@ def profile():
             "city": customer_profile.city,
             "state": customer_profile.state,
             "pin_code": customer_profile.pinCode,
+            "profile_complete": customer_profile.is_complete(),
         }
     }, 200
 
@@ -502,17 +508,25 @@ def update_profile():
     city = (data.get("city") or "").strip()
     state = (data.get("state") or "").strip()
     pin_code = (data.get("pin_code") or "").strip()
+    phone_number = (data.get("phone_number") or "").strip()
 
-    if not address or not city or not state or not pin_code:
-        return {"message": "Address, city, state, and PIN code are required"}, 400
+    if not phone_number or not address or not city or not state or not pin_code:
+        return {
+            "message": "Phone number, address, city, state, and PIN code are required"
+        }, 400
+    if not 7 <= len(phone_number) <= 20:
+        return {"message": "Enter a valid phone number"}, 400
+    if len(address) > 200 or len(city) > 100 or len(state) > 100 or len(pin_code) > 20:
+        return {"message": "One or more profile fields are too long"}, 400
 
-    customer_profile.user.phone_number = (
-        (data.get("phone_number") or "").strip() or None
-    )
+    customer_profile.user.phone_number = phone_number
     customer_profile.address = address
     customer_profile.city = city
     customer_profile.state = state
     customer_profile.pinCode = pin_code
     db.session.commit()
 
-    return {"message": "Profile updated successfully"}, 200
+    return {
+        "message": "Profile updated successfully",
+        "profile_complete": customer_profile.is_complete(),
+    }, 200

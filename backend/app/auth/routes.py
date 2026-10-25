@@ -1,5 +1,11 @@
-from flask import Blueprint, request
+import re
+import secrets
+
+from flask import Blueprint, current_app, request
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
+from google.auth.exceptions import GoogleAuthError
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -7,6 +13,54 @@ from ..database import db
 from ..models import Customer, Professional, ServiceType, User
 
 auth = Blueprint("auth", __name__)
+
+
+def user_data(user):
+    """Return the safe account fields needed by the Vue application."""
+    data = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "role": user.role,
+    }
+    if user.role == "customer" and user.customer is not None:
+        data["profile_complete"] = user.customer.is_complete()
+    if user.role == "professional" and user.professional is not None:
+        data["approval_status"] = user.professional.approval_status
+        data["block_reason"] = user.professional.block_reason
+    return data
+
+
+def create_session_response(user, message="Login successful"):
+    return {
+        "message": message,
+        "access_token": create_access_token(
+            identity=str(user.id),
+            additional_claims={"role": user.role},
+        ),
+        "user": user_data(user),
+    }
+
+
+def verify_google_token(credential, client_id):
+    """Verify a Google ID credential using Google's maintained library."""
+    return google_id_token.verify_oauth2_token(
+        credential,
+        google_requests.Request(),
+        client_id,
+    )
+
+
+def available_google_username(name, email):
+    raw_name = name or email.split("@", 1)[0]
+    base = re.sub(r"[^A-Za-z0-9_.-]+", "", raw_name).strip("._-")
+    base = (base or "google_customer")[:70]
+    candidate = base
+    number = 2
+    while db.session.scalar(db.select(User.id).where(User.username == candidate)):
+        candidate = f"{base[:70]}-{number}"
+        number += 1
+    return candidate
 
 @auth.get("/health")
 def auth_health():
@@ -21,6 +75,7 @@ def register():
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
     role = (data.get("role") or "").strip().lower()
+    phone_number = (data.get("phone_number") or "").strip()
 
     if not username or not email or not password or not role:
         return {
@@ -31,6 +86,11 @@ def register():
         return {
             "message": "Role must be either customer or professional"
         }, 400
+
+    if role == "customer" and not phone_number:
+        return {"message": "Phone number is required for customer bookings"}, 400
+    if phone_number and not 7 <= len(phone_number) <= 20:
+        return {"message": "Enter a valid phone number"}, 400
 
     existing_user=db.session.scalar(db.select(User).where((User.username==username) | (User.email==email)))
     
@@ -67,7 +127,7 @@ def register():
     user = User(
         username=username,
         email=email,
-        phone_number=(data.get("phone_number") or "").strip() or None,
+        phone_number=phone_number or None,
         password_hash=generate_password_hash(password),
         role=role,
     )
@@ -108,12 +168,7 @@ def register():
 
     response_body = {
         "message": "User registered successfully",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "role": user.role,
-        },
+        "user": user_data(user),
     }
 
     if role == "professional":
@@ -139,26 +194,89 @@ def login():
     if user is None or not check_password_hash(user.password_hash, password):
         return {"message": "Invalid email or password"}, 401
 
-    access_token = create_access_token(
-        identity=str(user.id),
-        additional_claims={"role": user.role},
-    )
+    return create_session_response(user), 200
 
-    user_data = {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "role": user.role,
-    }
-    if user.role == "professional" and user.professional is not None:
-        user_data["approval_status"] = user.professional.approval_status
-        user_data["block_reason"] = user.professional.block_reason
 
+@auth.get("/google/config")
+def google_config():
+    """Expose the public client ID only when Google login is configured."""
+    client_id = current_app.config.get("GOOGLE_CLIENT_ID")
     return {
-        "message": "Login successful",
-        "access_token": access_token,
-        "user": user_data,
+        "enabled": bool(client_id),
+        "client_id": client_id if client_id else None,
     }, 200
+
+
+@auth.post("/google")
+def google_login():
+    """Create or sign in a customer after verifying a Google ID token."""
+    client_id = current_app.config.get("GOOGLE_CLIENT_ID")
+    if not client_id:
+        return {"message": "Google sign-in is not configured"}, 503
+
+    data = request.get_json(silent=True) or {}
+    credential = data.get("credential")
+    if not isinstance(credential, str) or not credential:
+        return {"message": "Google credential is required"}, 400
+
+    try:
+        identity = verify_google_token(credential, client_id)
+    except (ValueError, GoogleAuthError):
+        return {"message": "Google sign-in could not be verified"}, 401
+
+    google_subject = identity.get("sub")
+    email = (identity.get("email") or "").strip().lower()
+    if not google_subject or not email or identity.get("email_verified") is not True:
+        return {"message": "Google did not provide a verified email address"}, 401
+
+    user = db.session.scalar(
+        db.select(User).where(User.google_subject == google_subject)
+    )
+    is_new_user = False
+
+    if user is None:
+        user = db.session.scalar(db.select(User).where(User.email == email))
+        if user is not None:
+            if user.role != "customer":
+                return {
+                    "message": "Google sign-in is available only for customer accounts"
+                }, 409
+            return {
+                "message": (
+                    "An account with this email already exists. "
+                    "Sign in with its password."
+                )
+            }, 409
+        else:
+            user = User(
+                username=available_google_username(identity.get("name"), email),
+                email=email,
+                google_subject=google_subject,
+                password_hash=generate_password_hash(secrets.token_urlsafe(32)),
+                role="customer",
+            )
+            db.session.add(user)
+            db.session.flush()
+            db.session.add(
+                Customer(
+                    user_id=user.id,
+                    address="",
+                    city="",
+                    state="",
+                    pinCode="",
+                )
+            )
+            is_new_user = True
+
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return {"message": "This Google account is already connected"}, 409
+
+    response_body = create_session_response(user, "Google sign-in successful")
+    response_body["is_new_user"] = is_new_user
+    return response_body, 201 if is_new_user else 200
 
 
 @auth.get("/me")
@@ -170,14 +288,7 @@ def current_user():
     if user is None:
         return {"message": "User no longer exists"}, 404
 
-    return {
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "role": user.role,
-        }
-    }, 200
+    return {"user": user_data(user)}, 200
 
 
 @auth.post("/logout")

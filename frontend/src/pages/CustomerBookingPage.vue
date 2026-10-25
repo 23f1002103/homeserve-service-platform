@@ -107,6 +107,13 @@ async function loadBookingPage() {
     if (!service.value) throw new Error('Service not found')
     serviceAreaAvailable.value = servicesData.service_area_available
     profile.value = profileData.profile
+    if (profile.value.profile_complete === false) {
+      await router.replace({
+        name: 'customer-profile',
+        query: { complete: '1', next: route.fullPath },
+      })
+      return
+    }
     serviceAddress.value = `${profile.value.address}, ${profile.value.city}, ${profile.value.state} - ${profile.value.pin_code}`
     servicePinCode.value = profile.value.pin_code
     scheduledFor.value = earliestSchedule()
@@ -222,6 +229,11 @@ onUnmounted(() => clearInterval(timerId))
 
         <form class="booking-form-panel" @submit.prevent="submitBooking">
           <div class="booking-selected-service"><div><small>SELECTED SERVICE</small><h2>{{ service.name }}</h2></div><strong>{{ service.price ? `₹${service.price}` : 'Price pending' }}</strong></div>
+
+          <section v-if="profile" class="booking-contact-summary">
+            <div><small>BOOKING CONTACT</small><strong>{{ profile.username }}</strong><p>{{ profile.phone_number }} · {{ profile.city }}</p></div>
+            <RouterLink to="/customer/profile">Edit profile</RouterLink>
+          </section>
 
           <div v-if="!serviceAreaAvailable" class="booking-area-warning">
             Your profile PIN is outside the current service network. You can continue only if the service address below has an admin-approved PIN code.

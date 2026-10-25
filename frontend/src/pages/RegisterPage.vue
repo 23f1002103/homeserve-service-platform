@@ -1,12 +1,26 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import GoogleSignInButton from '../components/GoogleSignInButton.vue'
 
 const router = useRouter()
 const errorMessage = ref('')
 const submitting = ref(false)
 const serviceTypes = ref([])
 const servicesLoading = ref(false)
+
+async function finishGoogleRegistration(data) {
+  localStorage.setItem('access_token', data.access_token)
+  localStorage.setItem('user', JSON.stringify(data.user))
+  await router.push({
+    name: 'customer-profile',
+    query: { complete: '1', next: '/customer/dashboard' },
+  })
+}
+
+function showGoogleError(message) {
+  errorMessage.value = message
+}
 
 const form = reactive({
   username: '',
@@ -86,6 +100,14 @@ onMounted(loadServiceTypes)
       <p class="eyebrow">Join HomeServe</p>
       <h1 id="register-title">Create your account</h1>
 
+      <GoogleSignInButton
+        v-if="form.role === 'customer'"
+        button-text="signup_with"
+        divider-text="or register with email"
+        @authenticated="finishGoogleRegistration"
+        @error="showGoogleError"
+      />
+
       <form class="register-grid" @submit.prevent="register">
         <label>
           Username
@@ -108,7 +130,7 @@ onMounted(loadServiceTypes)
         </label>
         <label>
           Phone number
-          <input v-model="form.phone_number" type="tel" autocomplete="tel" />
+          <input v-model="form.phone_number" type="tel" autocomplete="tel" :required="form.role === 'customer'" />
         </label>
         <label>
           PIN code

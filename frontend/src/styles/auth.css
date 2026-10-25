@@ -77,6 +77,36 @@
   opacity: 0.65;
 }
 
+.google-auth-section {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.google-auth-button {
+  display: flex;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #7a837e;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: #dde2de;
+  content: '';
+}
+
 .auth-switch {
   margin: 24px 0 0;
   color: #66716c;

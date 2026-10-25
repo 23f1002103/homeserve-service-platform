@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from werkzeug.security import check_password_hash
 
@@ -14,6 +15,7 @@ class RegistrationTestCase(unittest.TestCase):
                 "TESTING": True,
                 "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
                 "JWT_SECRET_KEY": "test-jwt-secret-not-for-production",
+                "GOOGLE_CLIENT_ID": "test-client.apps.googleusercontent.com",
             }
         )
         with self.app.app_context():
@@ -91,6 +93,7 @@ class RegistrationTestCase(unittest.TestCase):
             "email": "duplicate@example.com",
             "password": "Password123",
             "role": "customer",
+            "phone_number": "9999999999",
             "address": "12 Main Road",
             "city": "Bengaluru",
             "state": "Karnataka",
@@ -121,6 +124,7 @@ class RegistrationTestCase(unittest.TestCase):
                 "email": "login@example.com",
                 "password": "Password123",
                 "role": "customer",
+                "phone_number": "9999999999",
                 "address": "12 Main Road",
                 "city": "Bengaluru",
                 "state": "Karnataka",
@@ -152,6 +156,7 @@ class RegistrationTestCase(unittest.TestCase):
                 "email": "current@example.com",
                 "password": "Password123",
                 "role": "customer",
+                "phone_number": "9999999999",
                 "address": "12 Main Road",
                 "city": "Bengaluru",
                 "state": "Karnataka",
@@ -178,6 +183,97 @@ class RegistrationTestCase(unittest.TestCase):
         response = self.client.post("/api/auth/logout")
 
         self.assertEqual(response.status_code, 401)
+
+    @patch("app.auth.routes.verify_google_token")
+    def test_google_sign_in_creates_incomplete_customer(self, verify_token):
+        verify_token.return_value = {
+            "sub": "google-subject-123",
+            "email": "google.customer@example.com",
+            "email_verified": True,
+            "name": "Google Customer",
+        }
+
+        response = self.client.post(
+            "/api/auth/google",
+            json={"credential": "verified-by-mock"},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertIn("access_token", response.get_json())
+        self.assertFalse(response.get_json()["user"]["profile_complete"])
+        with self.app.app_context():
+            user = db.session.scalar(
+                db.select(User).where(User.google_subject == "google-subject-123")
+            )
+            self.assertEqual(user.role, "customer")
+            self.assertIsNotNone(user.customer)
+
+    @patch("app.auth.routes.verify_google_token")
+    def test_google_sign_in_reuses_returning_customer(self, verify_token):
+        verify_token.return_value = {
+            "sub": "returning-google-subject",
+            "email": "returning.google@example.com",
+            "email_verified": True,
+            "name": "Returning Customer",
+        }
+        first = self.client.post(
+            "/api/auth/google",
+            json={"credential": "first-token"},
+        )
+        second = self.client.post(
+            "/api/auth/google",
+            json={"credential": "second-token"},
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 200)
+        with self.app.app_context():
+            count = db.session.scalar(db.select(db.func.count(User.id)))
+            self.assertEqual(count, 1)
+
+    @patch("app.auth.routes.verify_google_token", side_effect=ValueError)
+    def test_google_sign_in_rejects_invalid_token(self, _verify_token):
+        response = self.client.post(
+            "/api/auth/google",
+            json={"credential": "invalid-token"},
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    @patch("app.auth.routes.verify_google_token")
+    def test_google_does_not_silently_link_password_account(self, verify_token):
+        self.client.post(
+            "/api/auth/register",
+            json={
+                "username": "password-customer",
+                "email": "password.customer@example.com",
+                "password": "Password123",
+                "role": "customer",
+                "phone_number": "9999999999",
+                "address": "12 Main Road",
+                "city": "Bengaluru",
+                "state": "Karnataka",
+                "pin_code": "560001",
+            },
+        )
+        verify_token.return_value = {
+            "sub": "different-google-subject",
+            "email": "password.customer@example.com",
+            "email_verified": True,
+            "name": "Password Customer",
+        }
+
+        response = self.client.post(
+            "/api/auth/google",
+            json={"credential": "verified-by-mock"},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        with self.app.app_context():
+            user = db.session.scalar(
+                db.select(User).where(User.email == "password.customer@example.com")
+            )
+            self.assertIsNone(user.google_subject)
 
 
 if __name__ == "__main__":

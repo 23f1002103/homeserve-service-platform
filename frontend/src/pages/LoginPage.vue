@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import GoogleSignInButton from '../components/GoogleSignInButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -9,6 +10,35 @@ const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
 const submitting = ref(false)
+
+async function finishAuthentication(data) {
+  localStorage.setItem('access_token', data.access_token)
+  localStorage.setItem('user', JSON.stringify(data.user))
+
+  if (data.user.role === 'admin') {
+    await router.push('/admin/dashboard')
+  } else if (data.user.role === 'customer') {
+    if (data.user.profile_complete === false) {
+      await router.push({ name: 'customer-profile', query: { complete: '1', next: '/customer/dashboard' } })
+    } else {
+      await router.push('/customer/dashboard')
+    }
+  } else if (data.user.role === 'professional') {
+    if (data.user.approval_status === 'approved') {
+      await router.push('/professional/dashboard')
+    } else if (data.user.approval_status === 'blocked') {
+      await router.push('/professional/blocked')
+    } else {
+      await router.push('/professional/pending')
+    }
+  } else {
+    await router.push('/')
+  }
+}
+
+function showGoogleError(message) {
+  errorMessage.value = message
+}
 
 async function login() {
   errorMessage.value = ''
@@ -26,24 +56,7 @@ async function login() {
       throw new Error(data.message || 'Login failed')
     }
 
-    localStorage.setItem('access_token', data.access_token)
-    localStorage.setItem('user', JSON.stringify(data.user))
-
-    if (data.user.role === 'admin') {
-      await router.push('/admin/dashboard')
-    } else if (data.user.role === 'customer') {
-      await router.push('/customer/dashboard')
-    } else if (data.user.role === 'professional') {
-      if (data.user.approval_status === 'approved') {
-        await router.push('/professional/dashboard')
-      } else if (data.user.approval_status === 'blocked') {
-        await router.push('/professional/blocked')
-      } else {
-        await router.push('/professional/pending')
-      }
-    } else {
-      await router.push('/')
-    }
+    await finishAuthentication(data)
   } catch (error) {
     errorMessage.value = error.message
   } finally {
@@ -62,6 +75,11 @@ async function login() {
       <p v-if="route.query.registered" class="form-success">
         Registration successful. You can sign in now.
       </p>
+
+      <GoogleSignInButton
+        @authenticated="finishAuthentication"
+        @error="showGoogleError"
+      />
 
       <form @submit.prevent="login">
         <label>

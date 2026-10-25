@@ -1,7 +1,10 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import CustomerHeader from '../components/CustomerHeader.vue'
 
+const route = useRoute()
+const router = useRouter()
 const profile = ref(null)
 const editing = ref(false)
 const saving = ref(false)
@@ -16,6 +19,9 @@ async function loadProfile() {
     if (!response.ok) throw new Error(data.message || 'Could not load profile')
     profile.value = data.profile
     Object.assign(form, data.profile)
+    if (route.query.complete === '1' || data.profile.profile_complete === false) {
+      editing.value = true
+    }
   } catch (error) { errorMessage.value = error.message }
 }
 
@@ -32,8 +38,15 @@ async function saveProfile() {
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Could not update profile')
     await loadProfile()
+    const savedUser = JSON.parse(localStorage.getItem('user') || '{}')
+    savedUser.profile_complete = true
+    localStorage.setItem('user', JSON.stringify(savedUser))
     editing.value = false
     successMessage.value = data.message
+    const nextPath = typeof route.query.next === 'string' ? route.query.next : ''
+    if (nextPath.startsWith('/customer/') && nextPath !== '/customer/profile') {
+      await router.push(nextPath)
+    }
   } catch (error) { errorMessage.value = error.message }
   finally { saving.value = false }
 }
@@ -45,12 +58,13 @@ onMounted(loadProfile)
 <template>
   <div class="workbench customer-workbench"><CustomerHeader current="profile" /><main class="workbench-content role-section-page">
     <header class="role-section-heading"><div><p class="workbench-label">HOME PROFILE</p><h1>Your account and<br />service address.</h1></div><p>This address will help prefill future booking requests.</p></header>
+    <p v-if="route.query.complete === '1' || profile?.profile_complete === false" class="profile-completion-note">Complete these details before booking a service. Your phone number is shared only with the professional who accepts your job.</p>
     <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
     <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
     <section v-if="profile" class="detail-sheet customer-detail-sheet">
       <div class="detail-sheet__title"><span>{{ profile.username.charAt(0).toUpperCase() }}</span><h2>{{ profile.username }}</h2><p>HomeServe customer</p><button v-if="!editing" @click="editing = true">Edit profile</button></div>
       <form v-if="editing" class="profile-edit-form" @submit.prevent="saveProfile">
-        <label>Phone number<input v-model="form.phone_number" type="tel" /></label>
+        <label>Phone number<input v-model="form.phone_number" type="tel" autocomplete="tel" minlength="7" maxlength="20" required /></label>
         <label class="profile-form-wide">Address<input v-model="form.address" required /></label>
         <label>City<input v-model="form.city" required /></label>
         <label>State<input v-model="form.state" required /></label>

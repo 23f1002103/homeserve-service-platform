@@ -25,6 +25,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    google_subject = db.Column(db.String(255), unique=True, nullable=True)
     phone_number = db.Column(db.String(20), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
     # Supported roles: customer, professional, admin.
@@ -46,6 +47,18 @@ class Customer(db.Model):
     pinCode = db.Column(db.String(20), nullable=False)
 
     user = db.relationship('User', backref=db.backref('customer', uselist=False))
+
+    def is_complete(self):
+        """Return whether this customer can safely create a booking."""
+        return all(
+            (
+                self.user.phone_number,
+                self.address,
+                self.city,
+                self.state,
+                self.pinCode,
+            )
+        )
 
     def __repr__(self):
         return f'<Customer {self.user.username}>'
