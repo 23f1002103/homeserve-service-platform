@@ -25,6 +25,12 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        # Neon and Render may close idle pooled connections between requests.
+        # Validate them before use and periodically replace long-lived ones.
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
 
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)

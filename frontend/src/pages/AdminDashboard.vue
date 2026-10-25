@@ -5,17 +5,29 @@ import AdminHeader from '../components/AdminHeader.vue'
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const dashboard = ref(null)
 const errorMessage = ref('')
+const loading = ref(false)
 
 async function loadDashboard() {
-  try {
-    const response = await fetch('/api/admin/dashboard', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
-    })
-    if (!response.ok) throw new Error('Could not load the dashboard')
-    dashboard.value = await response.json()
-  } catch (error) {
-    errorMessage.value = error.message
+  errorMessage.value = ''
+  loading.value = true
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch('/api/admin/dashboard', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      })
+      if (!response.ok) throw new Error('Could not load the dashboard')
+      dashboard.value = await response.json()
+      loading.value = false
+      return
+    } catch (error) {
+      if (attempt === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      } else {
+        errorMessage.value = error.message
+      }
+    }
   }
+  loading.value = false
 }
 
 onMounted(loadDashboard)
@@ -30,14 +42,14 @@ onMounted(loadDashboard)
         <p>Welcome, {{ user.username || 'Admin' }}. This overview shows the current health of HomeServe.</p>
       </section>
 
-      <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
+      <div v-if="errorMessage" class="dashboard-alert dashboard-retry-alert"><span>{{ errorMessage }}</span><button type="button" :disabled="loading" @click="loadDashboard">{{ loading ? 'Retrying…' : 'Retry' }}</button></div>
       <section v-if="dashboard" class="admin-metrics" aria-label="Platform totals">
         <article><span>01</span><small>Customers</small><strong>{{ dashboard.counts.customers }}</strong></article>
         <article><span>02</span><small>Professionals</small><strong>{{ dashboard.counts.professionals }}</strong></article>
         <article class="metric-highlight"><span>03</span><small>Waiting for approval</small><strong>{{ dashboard.counts.pending_professionals }}</strong></article>
         <article><span>04</span><small>Open requests</small><strong>{{ dashboard.counts.open_requests }}</strong></article>
       </section>
-      <section v-else-if="!errorMessage" class="dashboard-loading">Reading live platform data…</section>
+      <section v-else-if="loading || !errorMessage" class="dashboard-loading">Reading live platform data…</section>
 
       <section v-if="dashboard" class="admin-revenue-strip">
         <div><p class="workbench-label">PLATFORM REVENUE</p><h2>HomeServe commission</h2><small>This is the platform's share from completed services—not the admin's personal income.</small></div>
