@@ -28,6 +28,8 @@ const submitting = ref(false)
 const bookingId = ref(null)
 const demoPayment = ref(null)
 const paymentScreen = ref('ready')
+const paymentMethod = ref('qr')
+const demoUpiAddress = ref('')
 const secondsLeft = ref(300)
 const qrCells = Array.from({ length: 169 }, (_, index) => index)
 let timerId
@@ -95,6 +97,8 @@ function closeDemoPayment() {
 
 function retryDemoPayment() {
   paymentScreen.value = 'ready'
+  paymentMethod.value = 'qr'
+  demoUpiAddress.value = ''
   startDemoTimer()
 }
 
@@ -262,6 +266,8 @@ async function submitBooking() {
     bookingId.value = data.booking_id
     demoPayment.value = data.demo_payment
     paymentScreen.value = 'ready'
+    paymentMethod.value = 'qr'
+    demoUpiAddress.value = ''
     startDemoTimer()
   } catch (error) {
     errorMessage.value = error.message
@@ -341,15 +347,40 @@ onUnmounted(() => clearInterval(timerId))
 
       <div v-if="demoPayment" class="demo-pay-backdrop" role="dialog" aria-modal="true" aria-label="HomeServe demo payment">
         <section class="demo-pay-modal">
-          <header><div><span>HS</span><div><strong>HomeServe Pay</strong><small>UPI-style payment simulator</small></div></div><button type="button" aria-label="Close demo payment" @click="closeDemoPayment">×</button></header>
-
           <template v-if="paymentScreen === 'ready'">
-            <div class="demo-pay-warning"><b>DEMO ONLY</b><span>This QR cannot request or transfer real money.</span></div>
-            <div class="demo-pay-body">
-              <div class="demo-qr-wrap"><div class="demo-qr" aria-label="Decorative demo QR code"><i v-for="cell in qrCells" :key="cell" :class="{ active: qrCellActive(cell) }"></i></div><small>Visual simulation — not scannable</small></div>
-              <div class="demo-pay-details"><p>PAYING</p><h2>{{ demoPayment.payee }}</h2><strong>₹{{ demoPayment.amount }}</strong><dl><div><dt>Demo UPI ID</dt><dd>{{ demoPayment.demo_upi_id }}</dd></div><div><dt>Order</dt><dd>{{ demoPayment.order_id }}</dd></div><div><dt>Expires in</dt><dd>{{ timerLabel }}</dd></div></dl></div>
+            <div class="gateway-checkout-shell">
+              <aside class="gateway-order-summary">
+                <div class="gateway-brand"><span>HS</span><div><strong>HomeServe</strong><small>Secure Checkout</small></div></div>
+                <div class="gateway-order-copy"><small>PAYMENT FOR</small><strong>{{ service?.name || 'Home service' }}</strong><span>Booking #{{ bookingId }}</span></div>
+                <div class="gateway-amount"><small>AMOUNT PAYABLE</small><strong><sup>₹</sup>{{ demoPayment.amount }}</strong></div>
+                <dl><div><dt>Order ID</dt><dd>{{ demoPayment.order_id }}</dd></div><div><dt>Customer</dt><dd>{{ profile?.username }}</dd></div></dl>
+                <div class="gateway-secure-note"><span>⌾</span><div><strong>Secured checkout</strong><small>256-bit style payment experience</small></div></div>
+                <p><b>TEST MODE</b> No real money will be transferred.</p>
+              </aside>
+
+              <section class="gateway-payment-panel">
+                <header><div><small>PAYMENT OPTIONS</small><strong>Pay ₹{{ demoPayment.amount }}</strong></div><button type="button" aria-label="Close demo payment" @click="closeDemoPayment">×</button></header>
+                <div class="gateway-demo-warning"><b>DEMO</b><span>Use either option below to simulate a UPI payment.</span><time>{{ timerLabel }}</time></div>
+                <div class="gateway-payment-workspace">
+                  <nav aria-label="Demo payment methods"><button type="button" :class="{ active: paymentMethod === 'qr' }" @click="paymentMethod = 'qr'"><span>▦</span><div><strong>QR Code</strong><small>Scan using any UPI app</small></div><b>›</b></button><button type="button" :class="{ active: paymentMethod === 'upi' }" @click="paymentMethod = 'upi'"><span>UPI</span><div><strong>UPI ID</strong><small>Pay using your VPA</small></div><b>›</b></button></nav>
+
+                  <div v-if="paymentMethod === 'qr'" class="gateway-method-content gateway-qr-content">
+                    <div class="gateway-method-heading"><h2>Scan QR to pay</h2><p>Open any UPI app and scan this demo code</p></div>
+                    <div class="demo-qr-wrap"><div class="demo-qr" aria-label="Decorative demo QR code"><i v-for="cell in qrCells" :key="cell" :class="{ active: qrCellActive(cell) }"></i><span>HS</span></div><small>DEMO QR · NOT SCANNABLE</small></div>
+                    <div class="gateway-upi-apps"><span>G Pay</span><span>PhonePe</span><span>Paytm</span><span>BHIM</span></div>
+                    <button type="button" class="gateway-primary-action" @click="completeDemoPayment('success')">I have completed the payment</button>
+                  </div>
+
+                  <div v-else class="gateway-method-content gateway-upi-content">
+                    <div class="gateway-method-heading"><h2>Pay using UPI ID</h2><p>Enter a demo VPA to continue</p></div>
+                    <label>UPI ID<input v-model.trim="demoUpiAddress" type="text" placeholder="name@bank" autocomplete="off" /><small>Example: customer@upi</small></label>
+                    <div class="gateway-vpa-info"><span>✓</span><p>This is a simulation. No collect request will be sent to this UPI ID.</p></div>
+                    <button type="button" class="gateway-primary-action" :disabled="!demoUpiAddress" @click="completeDemoPayment('success')">Verify and pay ₹{{ demoPayment.amount }}</button>
+                  </div>
+                </div>
+                <footer><span>🔒 Payments secured by HomeServe Demo</span><button type="button" @click="completeDemoPayment('failed')">Simulate failed payment</button></footer>
+              </section>
             </div>
-            <footer class="demo-pay-actions"><button type="button" class="demo-fail-button" @click="completeDemoPayment('failed')">Simulate failure</button><button type="button" class="demo-success-button" @click="completeDemoPayment('success')">Simulate successful payment</button></footer>
           </template>
 
           <div v-else-if="paymentScreen === 'processing'" class="demo-payment-result is-processing"><span></span><h2>Processing demo payment…</h2><p>Updating the payment and booking records.</p></div>
