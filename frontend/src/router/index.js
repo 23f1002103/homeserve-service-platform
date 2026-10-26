@@ -22,6 +22,7 @@ import ProfessionalProfilePage from '../pages/ProfessionalProfilePage.vue'
 import ProfessionalEarningsPage from '../pages/ProfessionalEarningsPage.vue'
 import ProfessionalPendingPage from '../pages/ProfessionalPendingPage.vue'
 import ProfessionalBlockedPage from '../pages/ProfessionalBlockedPage.vue'
+import HelpSupportPage from '../pages/HelpSupportPage.vue'
 import { clearSession, tokenIsExpired } from '../utils/auth'
 
 
@@ -104,6 +105,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'customer' },
     },
     {
+      path: '/customer/support',
+      name: 'customer-support',
+      component: HelpSupportPage,
+      meta: { requiresAuth: true, role: 'customer' },
+    },
+    {
       path: '/professional/location',
       name: 'professional-location',
       component: ProfessionalLocationPage,
@@ -131,6 +138,12 @@ const router = createRouter({
       path: '/professional/earnings',
       name: 'professional-earnings',
       component: ProfessionalEarningsPage,
+      meta: { requiresAuth: true, role: 'professional' },
+    },
+    {
+      path: '/professional/support',
+      name: 'professional-support',
+      component: HelpSupportPage,
       meta: { requiresAuth: true, role: 'professional' },
     },
     {

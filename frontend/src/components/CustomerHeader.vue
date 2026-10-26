@@ -121,7 +121,7 @@ onUnmounted(() => window.clearInterval(notificationTimer))
       <div v-if="menuOpen" class="profile-menu__panel">
         <p><strong>{{ user.username }}</strong><small>{{ user.email }}</small></p>
         <RouterLink to="/customer/profile" @click="menuOpen = false">My profile</RouterLink>
-        <RouterLink to="/" @click="menuOpen = false">HomeServe website</RouterLink>
+        <RouterLink to="/customer/support" @click="menuOpen = false">Help &amp; support</RouterLink>
         <button type="button" @click="logout">Log out</button>
       </div>
     </div>
