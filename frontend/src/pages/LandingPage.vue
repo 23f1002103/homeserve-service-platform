@@ -1,7 +1,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import heroImage from '../assets/homeserve-hero.webp'
+import heroImage from '../assets/homesur-hero-3d.jpg'
+import plumbingImage from '../assets/service-plumbing.png'
+import electricalImage from '../assets/service-electrical.png'
+import cleaningImage from '../assets/service-cleaning.png'
+import applianceImage from '../assets/service-appliance.png'
+import bookingImage from '../assets/feature-booking.png'
+import verifiedImage from '../assets/feature-verified.png'
+import paymentsImage from '../assets/feature-payments.png'
 
 const landingData = ref(null)
 const loading = ref(true)
@@ -16,8 +23,30 @@ const dashboardPath = computed(() => {
 })
 const accountLabel = computed(() => currentUser.role ? 'Open dashboard' : 'Sign in')
 
+const serviceImages = {
+  plumbing: plumbingImage,
+  electrical: electricalImage,
+  cleaning: cleaningImage,
+  'home cleaning': cleaningImage,
+  'appliance repair': applianceImage,
+}
+
+const featureDetails = {
+  Simple: { image: bookingImage, title: 'Easy booking' },
+  Verified: { image: verifiedImage, title: 'Verified professionals' },
+  Upfront: { image: paymentsImage, title: 'Secure payments' },
+}
+
 function servicePath(service) {
   return currentUser.role === 'customer' ? `/customer/book/${service.id}` : dashboardPath.value
+}
+
+function serviceImage(service) {
+  return serviceImages[service.name.trim().toLowerCase()] || null
+}
+
+function featureDetail(highlight) {
+  return featureDetails[highlight.value] || null
 }
 
 function money(value) {
@@ -76,7 +105,7 @@ onMounted(loadLandingPage)
             </div>
           </div>
           <div class="hero-visual">
-            <img :src="heroImage" alt="A HomeServe professional arriving at a customer's home" />
+            <img :src="heroImage" alt="A welcoming modern home surrounded by greenery" />
             <div class="floating-note floating-note--top"><span class="note-icon">✓</span>Professional verified</div>
             <div class="floating-note floating-note--bottom"><span class="note-icon">⌂</span>Local help, clearly booked</div>
           </div>
@@ -88,9 +117,12 @@ onMounted(loadLandingPage)
             <p>Choose a service and connect with skilled professionals near you.</p>
           </div>
           <div v-if="landingData.services.length" class="service-grid">
-            <article v-for="(service, index) in landingData.services" :key="service.id" class="service-card">
-              <span class="service-number" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
-              <div><h3>{{ service.name }}</h3><p>{{ service.description || 'Professional household help available through HomeServe.' }}</p></div>
+            <article v-for="(service, index) in landingData.services" :key="service.id" class="service-card" :class="{ 'service-card--illustrated': serviceImage(service) }">
+              <div class="service-card__top">
+                <span class="service-number" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+                <img v-if="serviceImage(service)" class="service-illustration" :src="serviceImage(service)" alt="" loading="lazy" />
+              </div>
+              <div class="service-card__copy"><h3>{{ service.name }}</h3><p>{{ service.description || 'Professional household help available through HomeServe.' }}</p></div>
               <footer><strong>{{ money(service.price) }}</strong><RouterLink class="card-link" :to="servicePath(service)">{{ currentUser.role === 'customer' ? 'Book service' : 'Get started' }} <span>→</span></RouterLink></footer>
             </article>
           </div>
@@ -106,10 +138,13 @@ onMounted(loadLandingPage)
           </div>
           <ol class="service-journey">
             <li v-for="(highlight, index) in landingData.highlights" :key="highlight.value">
-              <span class="journey-marker" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+              <div class="journey-visual">
+                <img v-if="featureDetail(highlight)" :src="featureDetail(highlight).image" alt="" loading="lazy" />
+                <span v-else class="journey-marker" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+              </div>
               <div>
                 <small>{{ highlight.value }}</small>
-                <h3>{{ highlight.label }}</h3>
+                <h3>{{ featureDetail(highlight)?.title || highlight.label }}</h3>
                 <p>{{ highlight.description }}</p>
               </div>
             </li>
