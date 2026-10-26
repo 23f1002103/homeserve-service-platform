@@ -266,6 +266,9 @@ class CustomerDashboardTestCase(unittest.TestCase):
                 "service_state": "Karnataka",
                 "service_area_id": area_id,
                 "description": "Manual-address booking test",
+                "booking_for": "other",
+                "recipient_name": "Customer Parent",
+                "recipient_phone": "9988776655",
             },
         )
 
@@ -277,6 +280,36 @@ class CustomerDashboardTestCase(unittest.TestCase):
             self.assertIsNone(booking.latitude)
             self.assertIsNone(booking.longitude)
             self.assertEqual(booking.service_area_id, area_id)
+            self.assertEqual(booking.booking_for, "other")
+            self.assertEqual(booking.recipient_name, "Customer Parent")
+
+        booking_list = self.client.get("/api/customer/bookings", headers=headers)
+        recipient = booking_list.get_json()["bookings"][0]["recipient"]
+        self.assertEqual(recipient["name"], "Customer Parent")
+        self.assertEqual(recipient["phone_number"], "9988776655")
+
+    def test_booking_for_other_requires_recipient_contact(self):
+        with self.app.app_context():
+            service_id = db.session.scalar(db.select(ServiceType.id))
+            area_id = db.session.scalar(db.select(ServiceArea.id))
+
+        response = self.client.post(
+            "/api/customer/bookings",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={
+                "service_type_id": service_id,
+                "scheduled_for": "2099-01-20T10:30",
+                "service_address": "88 Manual Address, Bengaluru",
+                "service_city": "Bengaluru",
+                "service_state": "Karnataka",
+                "service_area_id": area_id,
+                "description": "Missing recipient test",
+                "booking_for": "other",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("recipient", response.get_json()["message"].lower())
 
     def test_manual_service_area_verification_rejects_unavailable_city(self):
         response = self.client.post(

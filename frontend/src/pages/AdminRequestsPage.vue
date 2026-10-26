@@ -13,7 +13,7 @@ const visibleRequests = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   return requests.value.filter(item => {
     const matchesFilter = filter.value === 'all' || item.status === filter.value
-    const matchesSearch = [item.id, item.service, item.customer, item.professional, item.address].some(value => String(value || '').toLowerCase().includes(query))
+    const matchesSearch = [item.id, item.service, item.customer, item.recipient, item.professional, item.address].some(value => String(value || '').toLowerCase().includes(query))
     return matchesFilter && matchesSearch
   })
 })
@@ -48,7 +48,7 @@ onMounted(loadRequests)
         <article v-for="request in paginatedRequests" :key="request.id">
           <code>#{{ String(request.id).padStart(4, '0') }}</code>
           <div><small>Service</small><strong>{{ request.service }}</strong></div>
-          <div><small>Customer</small><strong>{{ request.customer }}</strong></div>
+          <div><small>{{ request.booking_for === 'other' ? 'Booked by / for' : 'Customer' }}</small><strong>{{ request.customer }}<template v-if="request.recipient"> / {{ request.recipient }}</template></strong></div>
           <div><small>Professional</small><strong>{{ request.professional || 'Not assigned' }}</strong></div>
           <div><small>Schedule</small><strong>{{ formatDate(request.scheduled_for) }}</strong></div>
           <span class="record-status" :class="`status-${request.status}`">{{ statusLabel(request.status) }}</span>

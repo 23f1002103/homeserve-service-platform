@@ -139,7 +139,7 @@ onMounted(loadBookings)
         </button>
 
         <div v-if="expandedBookingId === booking.id" class="booking-compact-details">
-          <div class="booking-detail-copy"><div><small>PROBLEM DETAILS</small><p>{{ booking.description || 'No extra details provided.' }}</p></div><div><small>SERVICE ADDRESS</small><p>{{ booking.address }}</p></div><div><small>PAYMENT</small><p>{{ paymentLabel(booking.payment_method) }} · {{ booking.payment_status || 'pending' }}</p></div></div>
+          <div class="booking-detail-copy"><div><small>PROBLEM DETAILS</small><p>{{ booking.description || 'No extra details provided.' }}</p></div><div><small>SERVICE ADDRESS</small><p>{{ booking.address }}</p></div><div><small>SERVICE FOR</small><p>{{ booking.recipient ? `${booking.recipient.name} · ${booking.recipient.phone_number}` : 'Myself' }}</p></div><div><small>PAYMENT</small><p>{{ paymentLabel(booking.payment_method) }} · {{ booking.payment_status || 'pending' }}</p></div></div>
           <section v-if="booking.professional_details" class="assigned-professional-card">
             <span class="assigned-professional-avatar"><img v-if="booking.professional_details.profile_image_url" :src="booking.professional_details.profile_image_url" :alt="booking.professional_details.name" /><template v-else>{{ professionalInitial(booking.professional_details.name) }}</template></span>
             <div class="assigned-professional-identity"><small>ASSIGNED PROFESSIONAL</small><strong>{{ booking.professional_details.name }}</strong><p>{{ booking.service }} specialist</p></div>

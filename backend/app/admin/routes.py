@@ -341,6 +341,12 @@ def service_requests():
                 "id": service_request.id,
                 "service": service_request.service_type.name,
                 "customer": service_request.customer.user.username,
+                "booking_for": service_request.booking_for,
+                "recipient": (
+                    service_request.recipient_name
+                    if service_request.booking_for == "other"
+                    else None
+                ),
                 "professional": (
                     service_request.professional.user.username
                     if service_request.professional
@@ -503,8 +509,8 @@ def create_service_area():
     state = (data.get("state") or "").strip()
     pin_code = (data.get("pin_code") or "").strip()
 
-    if not city or not state or not pin_code:
-        return {"message": "City, state, and PIN code are required"}, 400
+    if not city or not state:
+        return {"message": "City and state are required"}, 400
 
     existing_area = next(
         (
@@ -542,10 +548,10 @@ def update_service_area(area_id):
     data = request.get_json(silent=True) or {}
     city = (data.get("city") or "").strip()
     state = (data.get("state") or "").strip()
-    pin_code = (data.get("pin_code") or "").strip()
+    pin_code = (data.get("pin_code") or area.pin_code or "").strip()
 
-    if not city or not state or not pin_code:
-        return {"message": "City, state, and PIN code are required"}, 400
+    if not city or not state:
+        return {"message": "City and state are required"}, 400
 
     existing_area = next(
         (

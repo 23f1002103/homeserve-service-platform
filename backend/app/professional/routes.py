@@ -195,8 +195,17 @@ def jobs():
             {
                 "id": job.id,
                 "service": job.service_type.name,
-                "customer": job.customer.user.username,
-                "customer_phone": job.customer.user.phone_number,
+                "customer": (
+                    job.recipient_name
+                    if job.booking_for == "other"
+                    else job.customer.user.username
+                ),
+                "customer_phone": (
+                    job.recipient_phone
+                    if job.booking_for == "other"
+                    else job.customer.user.phone_number
+                ),
+                "booking_for": job.booking_for,
                 "status": job.status,
                 "scheduled_for": (
                     job.scheduled_for.isoformat() if job.scheduled_for else None

@@ -42,6 +42,16 @@ class ServiceAreaTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_admin_can_create_city_without_pin_code(self):
+        response = self.client.post(
+            "/api/admin/service-areas",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            json={"city": "Mangaluru", "state": "Karnataka"},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["service_area"]["pin_code"], "")
+
     def test_admin_cannot_delete_area_used_by_professional(self):
         with self.app.app_context():
             user = User(

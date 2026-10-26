@@ -308,6 +308,9 @@ def create_booking():
     service_area_id = data.get("service_area_id")
     latitude = data.get("latitude")
     longitude = data.get("longitude")
+    booking_for = (data.get("booking_for") or "self").strip().lower()
+    recipient_name = (data.get("recipient_name") or "").strip()
+    recipient_phone = (data.get("recipient_phone") or "").strip()
 
     if not isinstance(service_type_id, int):
         return {"message": "Choose a valid service"}, 400
@@ -326,6 +329,16 @@ def create_booking():
         }, 400
     if len(address) > 200 or len(description) > 1000:
         return {"message": "Address or problem details are too long"}, 400
+    if booking_for not in {"self", "other"}:
+        return {"message": "Choose who this booking is for"}, 400
+    if booking_for == "other":
+        if not recipient_name or not recipient_phone:
+            return {"message": "Enter the recipient's name and phone number"}, 400
+        if len(recipient_name) > 100 or not 7 <= len(recipient_phone) <= 20:
+            return {"message": "Enter valid recipient contact details"}, 400
+    else:
+        recipient_name = None
+        recipient_phone = None
 
     try:
         scheduled_for = datetime.fromisoformat(scheduled_for_text)
@@ -372,6 +385,9 @@ def create_booking():
         service_area_id=service_area.id,
         service_address=address,
         description=description,
+        booking_for=booking_for,
+        recipient_name=recipient_name,
+        recipient_phone=recipient_phone,
         scheduled_for=scheduled_for,
         latitude=latitude,
         longitude=longitude,
@@ -613,6 +629,15 @@ def bookings():
                 ),
                 "address": booking.service_address,
                 "description": booking.description,
+                "booking_for": booking.booking_for,
+                "recipient": (
+                    {
+                        "name": booking.recipient_name,
+                        "phone_number": booking.recipient_phone,
+                    }
+                    if booking.booking_for == "other"
+                    else None
+                ),
                 "service_area": (
                     f"{booking.service_area.city}, {booking.service_area.state}"
                     if booking.service_area

@@ -617,6 +617,37 @@
 .area-manager-list article { grid-template-columns: 45px 1fr auto auto; }
 .area-row-actions { display: flex !important; grid-auto-flow: column; gap: 8px !important; }
 .area-row-actions button { padding: 8px 10px; background: transparent; font-size: 0.68rem; font-weight: 800; }
+.area-state-workspace { display: grid; grid-template-columns: minmax(230px, 0.65fr) minmax(0, 1.6fr); min-height: 620px; border: 1px solid #aeb5af; background: #f7f5ef; }
+.area-state-directory { padding: 28px; color: #edf4f0; background: #243f36; }
+.area-state-directory > header { display: flex; gap: 15px; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 1px solid rgb(255 255 255 / 18%); }
+.area-state-directory h2 { margin: 3px 0 0; color: #fff; font: 500 3.2rem Georgia, serif; }
+.area-state-directory > header button,
+.area-city-workspace > header > button { padding: 10px 12px; border: 1px solid #91a79d; color: #fff; background: transparent; font-size: 0.68rem; font-weight: 850; }
+.area-state-directory > button { display: flex; width: 100%; gap: 15px; align-items: center; justify-content: space-between; padding: 17px 4px; border: 0; border-bottom: 1px solid rgb(255 255 255 / 13%); color: #e5eee9; background: transparent; text-align: left; }
+.area-state-directory > button span { display: grid; gap: 4px; }
+.area-state-directory > button strong { font: 500 1.05rem Georgia, serif; }
+.area-state-directory > button small { color: #96aba1; font-size: 0.62rem; }
+.area-state-directory > button.active { color: #fff; }
+.area-state-directory > button.active strong { color: #efaa86; }
+.area-state-directory > p { color: #9bafa5; font-size: 0.75rem; line-height: 1.6; }
+.area-city-workspace { padding: clamp(28px, 5vw, 52px); }
+.area-city-workspace > header { display: flex; gap: 25px; align-items: end; justify-content: space-between; padding-bottom: 27px; border-bottom: 1px solid #bcc3bd; }
+.area-city-workspace > header h2 { margin: 6px 0; font: 500 clamp(2rem, 4vw, 3.5rem)/1 Georgia, serif; }
+.area-city-workspace > header p:last-child { margin: 0; color: #6d7972; font-size: 0.76rem; }
+.area-city-workspace > header > button { color: #fff; border-color: #245641; background: #245641; }
+.area-city-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; padding: 30px 0; border-bottom: 1px solid #c5cbc6; }
+.area-city-form label { display: grid; gap: 7px; color: #425149; font-size: 0.7rem; font-weight: 850; }
+.area-city-form input { width: 100%; padding: 12px; border: 1px solid #afb8b1; background: #fff; font: inherit; }
+.area-city-form input[readonly] { color: #65716a; background: #e9e9e3; }
+.area-city-form .service-form-actions { grid-auto-flow: column; }
+.area-city-list { padding-top: 25px; }
+.area-city-list > .list-search { margin-bottom: 14px; }
+.area-city-list > article { display: flex; gap: 20px; align-items: center; justify-content: space-between; min-height: 78px; border-bottom: 1px solid #c2c8c3; }
+.area-city-list article > div:first-child { display: grid; gap: 5px; }
+.area-city-list article strong { font: 500 1.15rem Georgia, serif; }
+.area-city-list article small { color: #727e77; font-size: 0.66rem; }
+.area-city-list article > div:last-child { display: flex; gap: 8px; }
+.area-city-list article button { padding: 8px 10px; border: 1px solid #77877f; color: #30473d; background: transparent; font-size: 0.68rem; font-weight: 800; }
 .area-row-actions .area-edit-button { border: 1px solid #789083; color: #294f42; }
 .area-row-actions .area-delete-button { border: 1px solid #bd8e80; color: #923f2b; }
 .area-row-actions button:disabled { cursor: wait; opacity: 0.55; }
@@ -716,6 +747,20 @@
 .booking-location-check.is-verified button { color: #fff; background: #285b47; }
 .booking-location-check button:disabled { cursor: wait; opacity: 0.55; }
 .booking-form-panel input[readonly] { color: #53635a; background: #eeeee9; }
+.booking-recipient-panel { display: grid; gap: 16px; padding: 22px; border: 1px solid #b6beb8; background: #f1efe8; }
+.booking-recipient-heading { display: grid; gap: 5px; }
+.booking-recipient-heading > small { color: #a04e30; font-size: 0.6rem; font-weight: 850; letter-spacing: 0.12em; }
+.booking-recipient-heading > strong { font: 500 1.35rem Georgia, serif; }
+.booking-recipient-heading p { margin: 0; color: #6e7973; font-size: 0.72rem; }
+.booking-recipient-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.booking-recipient-options label { display: flex; gap: 10px; padding: 15px; border: 1px solid #b4bcb6; cursor: pointer; background: #faf8f2; }
+.booking-recipient-options label.is-active { border-color: #285b47; box-shadow: inset 0 0 0 1px #285b47; }
+.booking-recipient-options input { width: auto; accent-color: #285b47; }
+.booking-recipient-options span { display: grid; gap: 4px; }
+.booking-recipient-options strong { font-size: 0.75rem; }
+.booking-recipient-options small { color: #758079; font-size: 0.62rem; line-height: 1.4; }
+.booking-recipient-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 5px; }
+.booking-recipient-fields label { display: grid; gap: 7px; color: #46564e; font-size: 0.7rem; font-weight: 850; }
 .booking-price-note { display: grid; grid-template-columns: 1fr auto; gap: 6px 20px; padding: 18px 0; border-block: 1px solid #c6ccc6; }
 .booking-price-note span { color: #68756e; font-size: 0.75rem; }
 .booking-price-note strong { font-family: Georgia, serif; font-size: 1.25rem; }
@@ -917,6 +962,12 @@
   .professional-summary article:nth-child(2) { border-top: 1px solid #adb2ab; }
   .professional-profile { gap: 35px; }
   .service-manager { grid-template-columns: 1fr; }
+  .area-state-workspace { grid-template-columns: 1fr; }
+  .area-state-directory { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 18px; }
+  .area-state-directory > header,
+  .area-state-directory > p { grid-column: 1 / -1; }
+  .area-city-form { grid-template-columns: 1fr 1fr; }
+  .area-city-form .service-form-actions { grid-column: 1 / -1; justify-content: start; }
   .service-type-list { grid-column: auto; }
   .service-type-list .priced-service-row { grid-template-columns: 35px 1fr; padding-block: 16px; }
   .priced-service-row .service-price-editor { grid-column: 2; justify-self: start; }
@@ -1082,6 +1133,12 @@
   .booking-checkout__intro,
   .booking-form-panel { padding: 30px 23px; }
   .booking-location-fields { grid-template-columns: 1fr; }
+  .booking-recipient-options,
+  .booking-recipient-fields { grid-template-columns: 1fr; }
+  .area-state-directory { grid-template-columns: 1fr; }
+  .area-city-workspace > header { align-items: flex-start; flex-direction: column; }
+  .area-city-form { grid-template-columns: 1fr; }
+  .area-city-form .service-form-actions { grid-column: auto; }
   .booking-checkout__intro ol { grid-template-columns: 1fr; }
   .booking-checkout__intro li { grid-template-columns: 35px 1fr; }
   .booking-location-check { grid-template-columns: 1fr; }

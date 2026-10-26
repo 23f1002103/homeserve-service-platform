@@ -133,6 +133,9 @@ class ServiceRequest(db.Model):
         nullable=True,
     )
     description = db.Column(db.Text, nullable=True)
+    booking_for = db.Column(db.String(20), nullable=False, default="self")
+    recipient_name = db.Column(db.String(100), nullable=True)
+    recipient_phone = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), nullable=False, default="pending")  # payment_pending, pending, accepted, completed, cancelled
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())

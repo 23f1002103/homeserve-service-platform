@@ -27,6 +27,9 @@ const matchedServiceArea = ref(null)
 const locationMatchMethod = ref(null)
 const manualAreaUnavailable = ref(false)
 const manualUnavailableMessage = ref('')
+const bookingFor = ref('self')
+const recipientName = ref('')
+const recipientPhone = ref('')
 const submitting = ref(false)
 const bookingId = ref(null)
 const demoPayment = ref(null)
@@ -178,6 +181,11 @@ function chooseLocationMethod(method) {
   matchedServiceArea.value = null
   locationMatchMethod.value = null
   errorMessage.value = ''
+  if (method === 'gps') {
+    bookingFor.value = 'self'
+    recipientName.value = ''
+    recipientPhone.value = ''
+  }
   if (method === 'manual' && profile.value) {
     serviceAddress.value = `${profile.value.address}, ${profile.value.city}, ${profile.value.state}`
     servicePinCode.value = profile.value.pin_code
@@ -261,6 +269,9 @@ async function submitBooking() {
         latitude: currentLocation.value?.latitude,
         longitude: currentLocation.value?.longitude,
         description: description.value,
+        booking_for: bookingFor.value,
+        recipient_name: bookingFor.value === 'other' ? recipientName.value : null,
+        recipient_phone: bookingFor.value === 'other' ? recipientPhone.value : null,
       }),
     })
     const data = await response.json()
@@ -346,6 +357,18 @@ onUnmounted(() => clearInterval(timerId))
           <section v-if="locationMethod === 'manual'" class="booking-location-check manual-location-check" :class="{ 'is-verified': matchedServiceArea }">
             <div><small>MANUAL SERVICE LOCATION</small><strong v-if="matchedServiceArea">Address verified for {{ matchedServiceArea.city }}</strong><strong v-else>Check service availability</strong><p v-if="matchedServiceArea">{{ matchedServiceArea.city }}, {{ matchedServiceArea.state }} is an admin-approved city.</p><p v-else>We will compare the city and state with the administrator's service areas.</p></div>
             <button type="button" :disabled="verifyingManualLocation" @click="verifyManualLocation">{{ verifyingManualLocation ? 'Checking…' : matchedServiceArea ? 'Verified ✓' : 'Verify address' }}</button>
+          </section>
+
+          <section v-if="locationMethod === 'manual'" class="booking-recipient-panel">
+            <div class="booking-recipient-heading"><small>WHO IS THIS SERVICE FOR?</small><strong>Choose the person at this address.</strong><p>You will pay for and track the booking from your account.</p></div>
+            <div class="booking-recipient-options" role="radiogroup" aria-label="Choose who the booking is for">
+              <label :class="{ 'is-active': bookingFor === 'self' }"><input v-model="bookingFor" type="radio" value="self" /><span><strong>Book for myself</strong><small>Use my account contact details</small></span></label>
+              <label :class="{ 'is-active': bookingFor === 'other' }"><input v-model="bookingFor" type="radio" value="other" /><span><strong>Book for someone else</strong><small>Share the recipient's contact after acceptance</small></span></label>
+            </div>
+            <div v-if="bookingFor === 'other'" class="booking-recipient-fields">
+              <label>Recipient name<input v-model.trim="recipientName" maxlength="100" autocomplete="name" required /></label>
+              <label>Recipient phone<input v-model.trim="recipientPhone" type="tel" minlength="7" maxlength="20" autocomplete="tel" required /></label>
+            </div>
           </section>
           <label>What is the problem?<textarea v-model.trim="description" rows="5" maxlength="1000" placeholder="Example: The kitchen tap has been leaking since yesterday…" required></textarea><small>{{ description.length }}/1000</small></label>
 

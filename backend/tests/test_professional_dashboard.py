@@ -238,6 +238,9 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
                 status="pending",
                 latitude=12.9716,
                 longitude=77.5946,
+                booking_for="other",
+                recipient_name="Customer Parent",
+                recipient_phone="9988776655",
             )
             second_job = ServiceRequest(
                 customer_id=customer.id,
@@ -428,6 +431,9 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(cancellation_after_assignment.status_code, 409)
         self.assertTrue(assigned.get_json()["has_active_job"])
         self.assertEqual(assigned.get_json()["available_jobs"], [])
+        self.assertEqual(assigned.get_json()["jobs"][0]["customer"], "Customer Parent")
+        self.assertEqual(assigned.get_json()["jobs"][0]["customer_phone"], "9988776655")
+        self.assertEqual(assigned.get_json()["jobs"][0]["booking_for"], "other")
         self.assertEqual(second_acceptance.status_code, 409)
         self.assertEqual(taken_job.status_code, 409)
         self.assertIn(
