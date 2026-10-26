@@ -14,7 +14,9 @@ const creating = ref(false)
 const editingAreaId = ref(null)
 const deletingAreaId = ref(null)
 const searchQuery = ref('')
+const currentPage = ref(1)
 const pendingDeleteArea = ref(null)
+const pageSize = 7
 const normalized = value => String(value || '').trim().toLowerCase()
 
 const stateGroups = computed(() => {
@@ -32,14 +34,18 @@ const stateGroups = computed(() => {
     .sort((a, b) => a.state.localeCompare(b.state))
 })
 const activeGroup = computed(() => stateGroups.value.find(group => normalized(group.state) === normalized(selectedState.value)) || null)
-const visibleCities = computed(() => {
+const filteredCities = computed(() => {
   const query = normalized(searchQuery.value)
   return (activeGroup.value?.cities || []).filter(area => normalized(area.city).includes(query))
 })
+const pageCount = computed(() => Math.max(1, Math.ceil(filteredCities.value.length / pageSize)))
+const visibleCities = computed(() => filteredCities.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
 const cityDemand = computed(() => [...areas.value].sort((a, b) => b.demand_count - a.demand_count || a.city.localeCompare(b.city)).slice(0, 5))
 const maximumDemand = computed(() => Math.max(1, ...cityDemand.value.map(area => area.demand_count)))
 
-watch(selectedState, () => { searchQuery.value = '' })
+watch(selectedState, () => { searchQuery.value = ''; currentPage.value = 1 })
+watch(searchQuery, () => { currentPage.value = 1 })
+watch(pageCount, lastPage => { if (currentPage.value > lastPage) currentPage.value = lastPage })
 
 function authHeaders(includeJson = false) {
   const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
@@ -64,11 +70,6 @@ function selectState(stateName) {
   editingAreaId.value = null
   addingNewState.value = false
   errorMessage.value = ''
-}
-
-function addCityToState(stateName) {
-  selectState(stateName)
-  document.querySelector('.area-city-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 function startNewState() {
@@ -173,27 +174,29 @@ onMounted(async () => {
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
 
-      <section class="area-state-workspace">
-        <aside class="area-state-directory">
-          <header><div><p class="workbench-label">SUPPORTED STATES</p><h2>{{ stateGroups.length }}</h2></div><button type="button" @click="startNewState">+ New state</button></header>
-          <button v-for="group in stateGroups" :key="group.state" type="button" :class="{ active: normalized(group.state) === normalized(selectedState) }" @click="selectState(group.state)"><span><strong>{{ group.state }}</strong><small>{{ group.cities.length }} cit{{ group.cities.length === 1 ? 'y' : 'ies' }}</small></span><b>→</b></button>
-          <p v-if="!stateGroups.length">No supported states yet.</p>
-        </aside>
+      <section class="area-network-manager">
+        <header class="area-network-toolbar">
+          <div><p class="workbench-label">SERVICE NETWORK</p><h2>{{ areas.length }} cities across {{ stateGroups.length }} states</h2></div>
+          <label v-if="stateGroups.length">View state<select v-model="selectedState" @change="selectState(selectedState)"><option v-for="group in stateGroups" :key="group.state" :value="group.state">{{ group.state }} · {{ group.cities.length }} cit{{ group.cities.length === 1 ? 'y' : 'ies' }}</option></select></label>
+          <button type="button" @click="startNewState">+ New state</button>
+        </header>
 
         <div class="area-city-workspace">
-          <header v-if="activeGroup"><div><p class="workbench-label">{{ activeGroup.state.toUpperCase() }} / CITIES</p><h2>{{ activeGroup.cities.length }} supported cit{{ activeGroup.cities.length === 1 ? 'y' : 'ies' }}</h2><p>{{ activeGroup.professional_count }} active professional(s) · {{ activeGroup.demand_count }} booking(s)</p></div><button type="button" @click="addCityToState(activeGroup.state)">+ Add city</button></header>
-          <header v-else><div><p class="workbench-label">NEW STATE</p><h2>Add its first city.</h2><p>A state appears in the directory as soon as its first supported city is saved.</p></div></header>
+          <header v-if="activeGroup && !addingNewState"><div><p class="workbench-label">{{ activeGroup.state.toUpperCase() }} / CITIES</p><h2>{{ activeGroup.cities.length }} supported cit{{ activeGroup.cities.length === 1 ? 'y' : 'ies' }}</h2><p>{{ activeGroup.professional_count }} active professional(s) · {{ activeGroup.demand_count }} booking(s)</p></div></header>
+          <header v-else><div><p class="workbench-label">NEW STATE</p><h2>Add its first city.</h2><p>The state will appear in the selector after its first supported city is saved.</p></div></header>
 
           <form class="area-city-form" @submit.prevent="saveArea">
-            <label>State<input v-model.trim="state" placeholder="Example: Karnataka" :readonly="Boolean(activeGroup) && !editingAreaId" required /></label>
+            <label v-if="addingNewState || editingAreaId">State<input v-model.trim="state" placeholder="Example: Karnataka" required /></label>
+            <div v-else class="area-form-context"><small>ADDING CITY TO</small><strong>{{ selectedState }}</strong></div>
             <label>City<input v-model.trim="city" placeholder="Example: Bengaluru" required /></label>
-            <div class="service-form-actions"><button type="submit" :disabled="creating">{{ creating ? 'Saving…' : editingAreaId ? 'Save city' : 'Add city' }}</button><button v-if="editingAreaId || addingNewState" type="button" class="service-form-cancel" :disabled="creating" @click="cancelEdit">Cancel</button></div>
+            <div class="service-form-actions"><button type="submit" :disabled="creating">{{ creating ? 'Saving…' : editingAreaId ? 'Save changes' : addingNewState ? 'Create state and city' : 'Add city' }}</button><button v-if="editingAreaId || addingNewState" type="button" class="service-form-cancel" :disabled="creating" @click="cancelEdit">Cancel</button></div>
           </form>
 
-          <div v-if="activeGroup" class="area-city-list">
-            <label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search cities in this state" aria-label="Search cities" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label>
+          <div v-if="activeGroup && !addingNewState" class="area-city-list">
+            <div class="area-city-list-tools"><label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search cities in this state" aria-label="Search cities" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label><span>{{ filteredCities.length }} result{{ filteredCities.length === 1 ? '' : 's' }}</span></div>
             <article v-for="area in visibleCities" :key="area.id"><div><strong>{{ area.city }}</strong><small>{{ area.professional_count }} active professional(s) · {{ area.demand_count }} booking(s)</small></div><div><button type="button" @click="editArea(area)">Edit</button><button type="button" class="area-delete-button" :disabled="deletingAreaId === area.id" @click="pendingDeleteArea = area">{{ deletingAreaId === area.id ? 'Deleting…' : 'Delete' }}</button></div></article>
-            <p v-if="!visibleCities.length">No cities match this search.</p>
+            <p v-if="!filteredCities.length">No cities match this search.</p>
+            <nav v-if="pageCount > 1" class="area-pagination" aria-label="City pages"><button type="button" :disabled="currentPage === 1" @click="currentPage--">Previous</button><span>{{ currentPage }} / {{ pageCount }}</span><button type="button" :disabled="currentPage === pageCount" @click="currentPage++">Next</button></nav>
           </div>
         </div>
       </section>
