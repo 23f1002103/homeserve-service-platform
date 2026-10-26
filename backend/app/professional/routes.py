@@ -77,6 +77,40 @@ def total_professional_earnings(jobs):
     )
 
 
+def available_jobs_for(profile, has_active_job=False):
+    """Return open jobs matching an approved professional's trade and areas."""
+    area_ids = [area.id for area in profile.service_areas]
+    if profile.approval_status != "approved" or not area_ids or has_active_job:
+        return []
+
+    return db.session.scalars(
+        db.select(ServiceRequest)
+        .where(
+            ServiceRequest.professional_id.is_(None),
+            ServiceRequest.status == "pending",
+            ServiceRequest.service_type_id == profile.service_type_id,
+            ServiceRequest.service_area_id.in_(area_ids),
+        )
+        .order_by(ServiceRequest.created_at.desc())
+    ).all()
+
+
+def serialize_available_job(job):
+    return {
+        "id": job.id,
+        "service": job.service_type.name,
+        "area": (
+            f"{job.service_area.city} - {job.service_area.pin_code}"
+            if job.service_area
+            else "Area unavailable"
+        ),
+        "status": "available",
+        "scheduled_for": job.scheduled_for.isoformat() if job.scheduled_for else None,
+        "description": job.description,
+        "price": str(job.payments[0].amount) if job.payments else None,
+    }
+
+
 @professional.get("/dashboard")
 @roles_required("professional")
 def dashboard():
@@ -105,6 +139,7 @@ def dashboard():
     today_earning = total_professional_earnings(
         earning_jobs(profile.id, today_start, tomorrow_start)
     )
+    available_jobs = available_jobs_for(profile, has_active_job=accepted_jobs > 0)
 
     return {
         "approval_status": profile.approval_status,
@@ -116,6 +151,10 @@ def dashboard():
         "completed_jobs": completed_jobs,
         "today_earning": str(today_earning),
         "service_area_count": len(profile.service_areas),
+        "available_jobs": [
+            serialize_available_job(job) for job in available_jobs[:3]
+        ],
+        "available_job_count": len(available_jobs),
     }, 200
 
 
@@ -136,19 +175,7 @@ def jobs():
     ).all()
     has_active_job = any(job.status == "accepted" for job in assigned_jobs)
 
-    available_jobs = []
-    area_ids = [area.id for area in profile.service_areas]
-    if profile.approval_status == "approved" and area_ids and not has_active_job:
-        available_jobs = db.session.scalars(
-            db.select(ServiceRequest)
-            .where(
-                ServiceRequest.professional_id.is_(None),
-                ServiceRequest.status == "pending",
-                ServiceRequest.service_type_id == profile.service_type_id,
-                ServiceRequest.service_area_id.in_(area_ids),
-            )
-            .order_by(ServiceRequest.created_at.desc())
-        ).all()
+    available_jobs = available_jobs_for(profile, has_active_job=has_active_job)
 
     return {
         "jobs": [
@@ -167,26 +194,7 @@ def jobs():
             }
             for job in assigned_jobs
         ],
-        "available_jobs": [
-            {
-                "id": job.id,
-                "service": job.service_type.name,
-                "area": (
-                    f"{job.service_area.city} - {job.service_area.pin_code}"
-                    if job.service_area
-                    else "Area unavailable"
-                ),
-                "status": "available",
-                "scheduled_for": (
-                    job.scheduled_for.isoformat() if job.scheduled_for else None
-                ),
-                "description": job.description,
-                "price": (
-                    str(job.payments[0].amount) if job.payments else None
-                ),
-            }
-            for job in available_jobs
-        ],
+        "available_jobs": [serialize_available_job(job) for job in available_jobs],
         "can_accept_jobs": profile.approval_status == "approved",
         "has_active_job": has_active_job,
     }, 200

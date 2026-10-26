@@ -16,6 +16,7 @@ import CustomerBookingsPage from '../pages/CustomerBookingsPage.vue'
 import CustomerBookingPage from '../pages/CustomerBookingPage.vue'
 import CustomerProfilePage from '../pages/CustomerProfilePage.vue'
 import ProfessionalDashboard from '../pages/ProfessionalDashboard.vue'
+import ProfessionalLocationPage from '../pages/ProfessionalLocationPage.vue'
 import ProfessionalJobsPage from '../pages/ProfessionalJobsPage.vue'
 import ProfessionalProfilePage from '../pages/ProfessionalProfilePage.vue'
 import ProfessionalEarningsPage from '../pages/ProfessionalEarningsPage.vue'
@@ -102,6 +103,12 @@ const router = createRouter({
       name: 'customer-profile',
       component: CustomerProfilePage,
       meta: { requiresAuth: true, role: 'customer' },
+    },
+    {
+      path: '/professional/location',
+      name: 'professional-location',
+      component: ProfessionalLocationPage,
+      meta: { requiresAuth: true, role: 'professional' },
     },
     {
       path: '/professional/dashboard',

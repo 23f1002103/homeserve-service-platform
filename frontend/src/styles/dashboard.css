@@ -297,6 +297,28 @@
 .professional-summary .earning-card small { color: #efd7ca; }
 .professional-summary .earning-card strong { font-size: clamp(2.3rem, 4vw, 4rem); }
 
+.professional-location-page { min-height: 100vh; padding: 32px; color: #213a37; background: #ece8dc; }
+.location-brand { display: inline-block; color: #213a37; font-family: Georgia, serif; font-size: 1.35rem; font-weight: 700; }
+.location-card { display: grid; width: min(850px, 100%); min-height: 520px; margin: 8vh auto 0; padding: clamp(35px, 7vw, 75px); place-items: center; border: 1px solid #aab0a8; background: #f7f4eb; }
+.location-progress,
+.location-result { width: min(100%, 650px); text-align: center; }
+.location-card h1 { margin: 16px 0; font: 500 clamp(2.6rem, 7vw, 5.3rem)/0.95 Georgia, serif; }
+.location-card p:not(.workbench-label) { color: #68746d; line-height: 1.7; }
+.location-pulse { position: relative; display: block; width: 76px; height: 76px; margin: 0 auto 34px; border: 1px solid #a55232; border-radius: 50%; }
+.location-pulse::before { position: absolute; inset: 18px; border-radius: inherit; background: #a55232; content: ''; animation: location-pulse 1.4s ease-in-out infinite; }
+.location-actions { display: flex; gap: 12px; justify-content: center; margin-top: 30px; }
+.location-actions button,
+.location-actions a { padding: 12px 17px; border: 1px solid #21483b; color: #fff; background: #21483b; font-size: 0.75rem; font-weight: 850; }
+.location-actions a { color: #21483b; background: transparent; }
+.location-error { color: #8a3029 !important; }
+@keyframes location-pulse { 0%, 100% { opacity: 0.45; transform: scale(0.72); } 50% { opacity: 1; transform: scale(1); } }
+
+.dashboard-available-work { margin-top: 65px; }
+.dashboard-available-work > header { display: flex; gap: 30px; align-items: end; justify-content: space-between; margin-bottom: 24px; }
+.dashboard-available-work > header h2 { margin: 5px 0 0; font: 500 clamp(2rem, 4vw, 3.5rem) Georgia, serif; }
+.dashboard-available-work > header > a { padding-bottom: 7px; border-bottom: 1px solid #a55232; color: #8c452c; font-size: 0.75rem; font-weight: 850; }
+.dashboard-job-preview footer a { padding: 10px 13px; color: #fff; background: #205541; font-size: 0.71rem; font-weight: 850; text-align: center; }
+
 .admin-revenue-strip { display: grid; grid-template-columns: 1.5fr 0.7fr 0.7fr; margin-top: 24px; border: 1px solid #9fa8a2; background: #f5f3ed; }
 .admin-revenue-strip > div { display: grid; gap: 7px; min-height: 145px; padding: 24px; align-content: center; border-right: 1px solid #b6bcb7; }
 .admin-revenue-strip > div:last-child { border-right: 0; }
@@ -948,6 +970,10 @@
   .professional-summary .trade-card { grid-column: auto; }
   .professional-summary .earning-card { grid-column: auto; }
   .professional-summary article { min-height: 165px; border-right: 0; border-bottom: 1px solid #adb2ab; }
+  .professional-location-page { padding: 18px; }
+  .location-card { min-height: 480px; margin-top: 5vh; padding: 28px 20px; }
+  .location-actions,
+  .dashboard-available-work > header { align-items: stretch; flex-direction: column; }
   .job-list article { grid-template-columns: 55px 1fr auto; padding-block: 15px; }
   .job-list time { grid-column: 2; }
   .job-status { grid-column: 3; grid-row: 1 / span 2; }

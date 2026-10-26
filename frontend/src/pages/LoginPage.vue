@@ -21,7 +21,7 @@ async function finishAuthentication(data) {
     await router.push('/customer/dashboard')
   } else if (data.user.role === 'professional') {
     if (data.user.approval_status === 'approved') {
-      await router.push('/professional/dashboard')
+      await router.push('/professional/location')
     } else if (data.user.approval_status === 'blocked') {
       await router.push('/professional/blocked')
     } else {

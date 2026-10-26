@@ -69,6 +69,8 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(body["service"], "Plumbing")
         self.assertEqual(body["approval_status"], "pending")
+        self.assertEqual(body["available_jobs"], [])
+        self.assertEqual(body["available_job_count"], 0)
 
     def test_professional_pages_return_separate_data(self):
         headers = {"Authorization": f"Bearer {self.professional_token}"}
@@ -252,6 +254,9 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             content_type="multipart/form-data",
         )
         available = self.client.get("/api/professional/jobs", headers=headers)
+        dashboard_available = self.client.get(
+            "/api/professional/dashboard", headers=headers
+        )
         accepted = self.client.patch(
             f"/api/professional/jobs/{job_id}/accept", headers=headers
         )
@@ -350,6 +355,8 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(available.status_code, 200)
         self.assertEqual(uploaded_photo.status_code, 200)
         self.assertEqual(len(available.get_json()["available_jobs"]), 2)
+        self.assertEqual(dashboard_available.get_json()["available_job_count"], 2)
+        self.assertEqual(len(dashboard_available.get_json()["available_jobs"]), 2)
         self.assertNotIn("directions_url", available.get_json()["available_jobs"][0])
         self.assertEqual(accepted.status_code, 200)
         self.assertEqual(customer_bookings.status_code, 200)

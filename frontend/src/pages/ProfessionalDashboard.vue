@@ -7,6 +7,9 @@ const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const dashboard = ref(null)
 const errorMessage = ref('')
+const formatDate = (value) => value
+  ? new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  : 'Not scheduled'
 
 async function loadDashboard() {
   try {
@@ -15,6 +18,7 @@ async function loadDashboard() {
     if (!response.ok) throw new Error(data.message || 'Could not load your dashboard')
     if (data.approval_status === 'pending') return router.replace('/professional/pending')
     if (data.approval_status === 'blocked') return router.replace('/professional/blocked')
+    if (data.service_area_count === 0) return router.replace('/professional/location')
     dashboard.value = data
   } catch (error) { errorMessage.value = error.message }
 }
@@ -38,6 +42,20 @@ onMounted(loadDashboard)
           <article><span>ACTIVE JOBS</span><strong>{{ dashboard.accepted_jobs }}</strong><small>Accepted requests</small></article>
           <article><span>WORK COMPLETED</span><strong>{{ dashboard.completed_jobs }}</strong><small>Finished requests</small></article>
           <article class="earning-card"><span>TODAY'S EARNINGS</span><strong>₹{{ dashboard.today_earning }}</strong><small>Your share from completed work</small></article>
+        </section>
+        <section class="dashboard-available-work">
+          <header>
+            <div><p class="workbench-label">AVAILABLE IN YOUR AREA</p><h2>Bookings ready for you.</h2></div>
+            <RouterLink to="/professional/jobs">View all {{ dashboard.available_job_count }} →</RouterLink>
+          </header>
+          <div v-if="dashboard.available_jobs.length" class="available-job-list dashboard-job-preview">
+            <article v-for="job in dashboard.available_jobs" :key="job.id">
+              <header><code>#{{ String(job.id).padStart(4, '0') }}</code><span>{{ job.area }}</span></header>
+              <div><p class="workbench-label">{{ job.service }}</p><h2>{{ job.description }}</h2></div>
+              <footer><time>{{ formatDate(job.scheduled_for) }}</time><strong>{{ job.price ? `₹${job.price}` : 'Price unavailable' }}</strong><RouterLink to="/professional/jobs">Open job</RouterLink></footer>
+            </article>
+          </div>
+          <div v-else class="empty-job-sheet"><span></span><div><h3>No matching requests right now.</h3><p>New paid bookings matching your trade and saved service area will appear here.</p></div></div>
         </section>
         <section class="role-page-links">
           <RouterLink to="/professional/jobs"><span>01</span><div><strong>My jobs</strong><small>View assignments and schedules</small></div><b>→</b></RouterLink>
