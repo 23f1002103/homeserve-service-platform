@@ -6,6 +6,8 @@ import plumbingImage from '../assets/service-plumbing.png'
 import electricalImage from '../assets/service-electrical.png'
 import cleaningImage from '../assets/service-cleaning.png'
 import applianceImage from '../assets/service-appliance.png'
+import acRepairImage from '../assets/service-ac-repair.png'
+import carpentryImage from '../assets/service-carpentry.png'
 import bookingImage from '../assets/feature-booking.png'
 import verifiedImage from '../assets/feature-verified.png'
 import paymentsImage from '../assets/feature-payments.png'
@@ -29,6 +31,9 @@ const serviceImages = {
   cleaning: cleaningImage,
   'home cleaning': cleaningImage,
   'appliance repair': applianceImage,
+  'ac service & repair': acRepairImage,
+  'ac service and repair': acRepairImage,
+  carpentry: carpentryImage,
 }
 
 const featureDetails = {
@@ -36,6 +41,23 @@ const featureDetails = {
   Verified: { image: verifiedImage, title: 'Verified professionals' },
   Upfront: { image: paymentsImage, title: 'Secure payments' },
 }
+
+const featuredServices = computed(() => (
+  landingData.value?.services.filter((service) => serviceImage(service)) || []
+))
+
+const startingPrice = computed(() => {
+  const prices = featuredServices.value
+    .map((service) => Number(service.price))
+    .filter((price) => Number.isFinite(price) && price > 0)
+
+  if (!prices.length) return ''
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(Math.min(...prices))
+})
 
 function servicePath(service) {
   return currentUser.role === 'customer' ? `/customer/book/${service.id}` : dashboardPath.value
@@ -47,11 +69,6 @@ function serviceImage(service) {
 
 function featureDetail(highlight) {
   return featureDetails[highlight.value] || null
-}
-
-function money(value) {
-  if (!value) return 'Price being prepared'
-  return `From ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value))}`
 }
 
 async function loadLandingPage() {
@@ -114,19 +131,22 @@ onMounted(loadLandingPage)
         <section id="services" class="section services-section" aria-labelledby="services-title">
           <div class="section-heading">
             <div><p class="eyebrow">Popular services</p><h2 id="services-title">Help for every corner of your home</h2></div>
-            <p>Choose a service and connect with skilled professionals near you.</p>
+            <div class="section-heading__support">
+              <p>Choose a service and connect with skilled professionals near you.</p>
+              <p v-if="startingPrice" class="service-price-note">Home care for every budget—services start at {{ startingPrice }}.</p>
+            </div>
           </div>
-          <div v-if="landingData.services.length" class="service-grid">
-            <article v-for="(service, index) in landingData.services" :key="service.id" class="service-card" :class="{ 'service-card--illustrated': serviceImage(service) }">
+          <div v-if="featuredServices.length" class="service-grid">
+            <article v-for="(service, index) in featuredServices" :key="service.id" class="service-card service-card--illustrated">
               <div class="service-card__top">
                 <span class="service-number" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
                 <img v-if="serviceImage(service)" class="service-illustration" :src="serviceImage(service)" alt="" loading="lazy" />
               </div>
               <div class="service-card__copy"><h3>{{ service.name }}</h3><p>{{ service.description || 'Professional household help available through HomeServe.' }}</p></div>
-              <footer><strong>{{ money(service.price) }}</strong><RouterLink class="card-link" :to="servicePath(service)">{{ currentUser.role === 'customer' ? 'Book service' : 'Get started' }} <span>→</span></RouterLink></footer>
+              <footer><RouterLink class="card-link" :to="servicePath(service)">{{ currentUser.role === 'customer' ? 'Book service' : 'Get started' }} <span>→</span></RouterLink></footer>
             </article>
           </div>
-          <div v-else class="services-empty"><span>Service catalogue</span><h3>New services are being prepared.</h3><p>The administrator has not published any bookable service yet.</p></div>
+          <div v-else class="services-empty"><span>Featured services</span><h3>New featured services are being prepared.</h3><p>Please check again soon for services available to book from the homepage.</p></div>
         </section>
 
         <section id="why-us" class="section trust-section" aria-labelledby="trust-title">
