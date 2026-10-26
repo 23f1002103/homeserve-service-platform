@@ -6,7 +6,7 @@ from flask_jwt_extended import get_jwt_identity
 
 from ..auth.decorators import roles_required
 from ..database import db
-from ..location import get_address_from_coordinates
+from ..location import get_address_from_coordinates, location_matches_area
 from ..models import (
     Notification,
     Professional,
@@ -78,9 +78,13 @@ def total_professional_earnings(jobs):
 
 
 def available_jobs_for(profile, has_active_job=False):
-    """Return open jobs matching an approved professional's trade and areas."""
-    area_ids = [area.id for area in profile.service_areas]
-    if profile.approval_status != "approved" or not area_ids or has_active_job:
+    """Return open jobs matching an approved professional's trade and GPS area."""
+    if (
+        profile.approval_status != "approved"
+        or profile.active_service_area_id is None
+        or profile.location_verified_at is None
+        or has_active_job
+    ):
         return []
 
     return db.session.scalars(
@@ -89,7 +93,7 @@ def available_jobs_for(profile, has_active_job=False):
             ServiceRequest.professional_id.is_(None),
             ServiceRequest.status == "pending",
             ServiceRequest.service_type_id == profile.service_type_id,
-            ServiceRequest.service_area_id.in_(area_ids),
+            ServiceRequest.service_area_id == profile.active_service_area_id,
         )
         .order_by(ServiceRequest.created_at.desc())
     ).all()
@@ -100,7 +104,7 @@ def serialize_available_job(job):
         "id": job.id,
         "service": job.service_type.name,
         "area": (
-            f"{job.service_area.city} - {job.service_area.pin_code}"
+            f"{job.service_area.city}, {job.service_area.state}"
             if job.service_area
             else "Area unavailable"
         ),
@@ -150,7 +154,16 @@ def dashboard():
         "accepted_jobs": accepted_jobs,
         "completed_jobs": completed_jobs,
         "today_earning": str(today_earning),
-        "service_area_count": len(profile.service_areas),
+        "location_verified": profile.location_verified_at is not None,
+        "current_area": (
+            {
+                "city": profile.active_service_area.city,
+                "state": profile.active_service_area.state,
+                "pin_code": profile.active_service_area.pin_code,
+            }
+            if profile.active_service_area
+            else None
+        ),
         "available_jobs": [
             serialize_available_job(job) for job in available_jobs[:3]
         ],
@@ -237,9 +250,10 @@ def accept_job(job_id):
     if job.service_type_id != profile.service_type_id:
         return {"message": "This job does not match your service type"}, 403
 
-    professional_area_ids = [area.id for area in profile.service_areas]
-    if job.service_area_id not in professional_area_ids:
-        return {"message": "This job is outside your selected service areas"}, 403
+    if profile.location_verified_at is None or profile.active_service_area_id is None:
+        return {"message": "Verify your current location before accepting jobs"}, 403
+    if job.service_area_id != profile.active_service_area_id:
+        return {"message": "This job is outside your current area"}, 403
 
     job.professional_id = profile.id
     job.status = "accepted"
@@ -495,69 +509,18 @@ def public_profile_photo(professional_id):
     )
 
 
-@professional.get("/service-areas")
-@roles_required("professional")
-def service_areas():
-    user_id = int(get_jwt_identity())
-    profile = db.session.scalar(
-        db.select(Professional).where(Professional.user_id == user_id)
-    )
-    if profile is None:
-        return {"message": "Professional profile not found"}, 404
-
-    available_areas = db.session.scalars(
-        db.select(ServiceArea).order_by(ServiceArea.state, ServiceArea.city)
-    ).all()
-
-    return {
-        "available_areas": [
-            {
-                "id": area.id,
-                "city": area.city,
-                "state": area.state,
-                "pin_code": area.pin_code,
-            }
-            for area in available_areas
-        ],
-        "selected_area_ids": [area.id for area in profile.service_areas],
-    }, 200
-
-
-@professional.patch("/service-areas")
-@roles_required("professional")
-def update_service_areas():
-    user_id = int(get_jwt_identity())
-    profile = db.session.scalar(
-        db.select(Professional).where(Professional.user_id == user_id)
-    )
-    if profile is None:
-        return {"message": "Professional profile not found"}, 404
-
-    data = request.get_json(silent=True) or {}
-    area_ids = data.get("area_ids")
-    if not isinstance(area_ids, list) or any(
-        not isinstance(area_id, int) for area_id in area_ids
-    ):
-        return {"message": "area_ids must be a list of numbers"}, 400
-
-    if area_ids:
-        selected_areas = db.session.scalars(
-            db.select(ServiceArea).where(ServiceArea.id.in_(area_ids))
-        ).all()
-    else:
-        selected_areas = []
-
-    if len(selected_areas) != len(area_ids):
-        return {"message": "One or more service areas do not exist"}, 400
-
-    profile.service_areas = selected_areas
-    db.session.commit()
-    return {"message": "Service areas updated successfully"}, 200
-
-
 @professional.post("/detect-service-area")
 @roles_required("professional")
 def detect_service_area():
+    user_id = int(get_jwt_identity())
+    profile = db.session.scalar(
+        db.select(Professional).where(Professional.user_id == user_id)
+    )
+    if profile is None:
+        return {"message": "Professional profile not found"}, 404
+    if profile.approval_status != "approved":
+        return {"message": "Admin approval is required before finding jobs"}, 403
+
     data = request.get_json(silent=True) or {}
     latitude = data.get("latitude")
     longitude = data.get("longitude")
@@ -571,13 +534,18 @@ def detect_service_area():
     if location is None:
         return {"message": "Location lookup is temporarily unavailable"}, 503
 
-    matched_area = None
-    if location["pin_code"]:
-        matched_area = db.session.scalar(
-            db.select(ServiceArea).where(
-                ServiceArea.pin_code == location["pin_code"]
-            )
-        )
+    matched_area = next(
+        (
+            area
+            for area in db.session.scalars(db.select(ServiceArea)).all()
+            if location_matches_area(location, area)
+        ),
+        None,
+    )
+
+    profile.active_service_area = matched_area
+    profile.location_verified_at = datetime.now() if matched_area else None
+    db.session.commit()
 
     return {
         "detected_location": location,

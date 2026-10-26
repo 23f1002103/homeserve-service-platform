@@ -7,7 +7,7 @@ from flask_jwt_extended import get_jwt_identity
 
 from ..auth.decorators import roles_required
 from ..database import db
-from ..location import get_address_from_coordinates, normalize_city_name
+from ..location import get_address_from_coordinates, location_matches_area
 from ..models import Customer, Notification, Payment, Review, ServiceArea, ServiceRequest, ServiceType
 from ..reports import create_invoice_pdf
 from ..tasks import enqueue_task, send_booking_confirmation
@@ -17,18 +17,11 @@ customer = Blueprint("customer", __name__)
 
 
 def find_service_area(location):
-    """Prefer an exact PIN match, then allow an admin-approved city match."""
+    """Find an admin-approved area using normalized city and state."""
     areas = db.session.scalars(db.select(ServiceArea)).all()
-    if location["pin_code"]:
-        for area in areas:
-            if area.pin_code == location["pin_code"]:
-                return area, "pin_code"
-
-    detected_city = normalize_city_name(location["city"])
-    if detected_city:
-        for area in areas:
-            if normalize_city_name(area.city) == detected_city:
-                return area, "city"
+    for area in areas:
+        if location_matches_area(location, area):
+            return area, "city_state"
 
     return None, None
 
@@ -197,8 +190,8 @@ def services():
     if profile is None:
         return {"message": "Customer profile not found"}, 404
 
-    customer_area = db.session.scalar(
-        db.select(ServiceArea).where(ServiceArea.pin_code == profile.pinCode)
+    customer_area, _ = find_service_area(
+        {"city": profile.city, "state": profile.state, "pin_code": profile.pinCode}
     )
     service_list = db.session.scalars(
         db.select(ServiceType).order_by(ServiceType.name)
@@ -262,16 +255,18 @@ def detect_service_area():
 @roles_required("customer")
 def verify_service_area():
     data = request.get_json(silent=True) or {}
+    city = (data.get("city") or "").strip()
+    state = (data.get("state") or "").strip()
     pin_code = (data.get("pin_code") or "").strip()
-    if not pin_code:
-        return {"message": "Enter the service address PIN code"}, 400
+    if not city or not state:
+        return {"message": "Enter the service address city and state"}, 400
 
-    matched_area = db.session.scalar(
-        db.select(ServiceArea).where(ServiceArea.pin_code == pin_code)
+    matched_area, match_method = find_service_area(
+        {"city": city, "state": state, "pin_code": pin_code}
     )
     if matched_area is None:
         return {
-            "message": f"HomeServe is not available for PIN {pin_code} yet",
+            "message": f"HomeServe is not available in {city}, {state} yet",
             "matched_area": None,
         }, 404
 
@@ -283,7 +278,7 @@ def verify_service_area():
             "state": matched_area.state,
             "pin_code": matched_area.pin_code,
         },
-        "match_method": "pin_code",
+        "match_method": match_method,
     }, 200
 
 
@@ -305,6 +300,8 @@ def create_booking():
     data = request.get_json(silent=True) or {}
     service_type_id = data.get("service_type_id")
     service_pin_code = (data.get("service_pin_code") or "").strip()
+    service_city = (data.get("service_city") or "").strip()
+    service_state = (data.get("service_state") or "").strip()
     address = (data.get("service_address") or "").strip()
     description = (data.get("description") or "").strip()
     scheduled_for_text = (data.get("scheduled_for") or "").strip()
@@ -317,8 +314,16 @@ def create_booking():
     service_type = db.session.get(ServiceType, service_type_id)
     if service_type is None:
         return {"message": "Service type not found"}, 404
-    if not address or not description or not scheduled_for_text or not service_pin_code:
-        return {"message": "Schedule, address, PIN code, and problem details are required"}, 400
+    if (
+        not address
+        or not description
+        or not scheduled_for_text
+        or not service_city
+        or not service_state
+    ):
+        return {
+            "message": "Schedule, address, city, state, and problem details are required"
+        }, 400
     if len(address) > 200 or len(description) > 1000:
         return {"message": "Address or problem details are too long"}, 400
 
@@ -336,15 +341,17 @@ def create_booking():
     service_area = None
     if isinstance(service_area_id, int):
         service_area = db.session.get(ServiceArea, service_area_id)
-        if (
-            service_area is not None
-            and not coordinates_provided
-            and service_area.pin_code != service_pin_code
+        if service_area is not None and not location_matches_area(
+            {"city": service_city, "state": service_state}, service_area
         ):
             service_area = None
     if service_area is None:
-        service_area = db.session.scalar(
-            db.select(ServiceArea).where(ServiceArea.pin_code == service_pin_code)
+        service_area, _ = find_service_area(
+            {
+                "city": service_city,
+                "state": service_state,
+                "pin_code": service_pin_code,
+            }
         )
     if service_area is None:
         return {"message": "HomeServe is not available at this location"}, 400
@@ -607,7 +614,7 @@ def bookings():
                 "address": booking.service_address,
                 "description": booking.description,
                 "service_area": (
-                    f"{booking.service_area.city} - {booking.service_area.pin_code}"
+                    f"{booking.service_area.city}, {booking.service_area.state}"
                     if booking.service_area
                     else None
                 ),

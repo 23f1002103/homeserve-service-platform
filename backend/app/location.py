@@ -18,6 +18,23 @@ def normalize_city_name(value):
     return aliases.get(normalized, normalized)
 
 
+def normalize_state_name(value):
+    """Normalize a state name for case- and punctuation-insensitive matching."""
+    return "".join(
+        character for character in (value or "").casefold() if character.isalnum()
+    )
+
+
+def location_matches_area(location, area):
+    """Return whether a reverse-geocoded location belongs to a city service area."""
+    return (
+        bool(normalize_city_name(location.get("city")))
+        and normalize_city_name(location.get("city")) == normalize_city_name(area.city)
+        and normalize_state_name(location.get("state"))
+        == normalize_state_name(area.state)
+    )
+
+
 def _request_json(url):
     """Fetch JSON without allowing a provider outage to break the request."""
     map_request = Request(

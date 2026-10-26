@@ -2,22 +2,6 @@
 from .database import db
 
 
-professional_service_areas = db.Table(
-    "professional_service_areas",
-    db.Column(
-        "professional_id",
-        db.Integer,
-        db.ForeignKey("professionals.id"),
-        primary_key=True,
-    ),
-    db.Column(
-        "service_area_id",
-        db.Integer,
-        db.ForeignKey("service_areas.id"),
-        primary_key=True,
-    ),
-)
-
 class User(db.Model):
     """Model representing a user in the HomeServe application."""
     __tablename__ = 'users'
@@ -86,10 +70,15 @@ class Professional(db.Model):
         "ServiceType",
         backref=db.backref("professionals", lazy=True),
     )
-    service_areas = db.relationship(
+    active_service_area_id = db.Column(
+        db.Integer,
+        db.ForeignKey("service_areas.id"),
+        nullable=True,
+    )
+    location_verified_at = db.Column(db.DateTime, nullable=True)
+    active_service_area = db.relationship(
         "ServiceArea",
-        secondary=professional_service_areas,
-        back_populates="professionals",
+        back_populates="active_professionals",
     )
 
     user = db.relationship('User', backref=db.backref('professional', uselist=False))
@@ -246,10 +235,9 @@ class ServiceArea(db.Model):
     state = db.Column(db.String(100), nullable=False)
     pin_code = db.Column(db.String(20), nullable=False)
 
-    professionals = db.relationship(
+    active_professionals = db.relationship(
         "Professional",
-        secondary=professional_service_areas,
-        back_populates="service_areas",
+        back_populates="active_service_area",
     )
 
     def __repr__(self):

@@ -13,6 +13,8 @@ const profileRequired = ref(false)
 const scheduledFor = ref('')
 const serviceAddress = ref('')
 const servicePinCode = ref('')
+const serviceCity = ref('')
+const serviceState = ref('')
 const description = ref('')
 const errorMessage = ref('')
 const serviceAreaAvailable = ref(true)
@@ -111,6 +113,8 @@ async function loadBookingPage() {
     }
     serviceAddress.value = `${profile.value.address}, ${profile.value.city}, ${profile.value.state} - ${profile.value.pin_code}`
     servicePinCode.value = profile.value.pin_code
+    serviceCity.value = profile.value.city
+    serviceState.value = profile.value.state
     scheduledFor.value = earliestSchedule()
   } catch (error) {
     errorMessage.value = error.message
@@ -150,6 +154,8 @@ function detectCurrentLocation() {
         matchedServiceArea.value = data.matched_area
         locationMatchMethod.value = data.match_method
         servicePinCode.value = data.detected_location.pin_code || data.matched_area.pin_code
+        serviceCity.value = data.detected_location.city || data.matched_area.city
+        serviceState.value = data.detected_location.state || data.matched_area.state
         if (data.detected_location.full_address) serviceAddress.value = data.detected_location.full_address.slice(0, 200)
       } catch (error) {
         errorMessage.value = error.message
@@ -175,14 +181,16 @@ function chooseLocationMethod(method) {
   if (method === 'manual' && profile.value) {
     serviceAddress.value = `${profile.value.address}, ${profile.value.city}, ${profile.value.state}`
     servicePinCode.value = profile.value.pin_code
+    serviceCity.value = profile.value.city
+    serviceState.value = profile.value.state
   }
 }
 
 async function verifyManualLocation() {
   errorMessage.value = ''
   matchedServiceArea.value = null
-  if (!serviceAddress.value || !servicePinCode.value) {
-    errorMessage.value = 'Enter the complete service address and PIN code'
+  if (!serviceAddress.value || !serviceCity.value || !serviceState.value) {
+    errorMessage.value = 'Enter the complete service address, city, and state'
     return
   }
 
@@ -191,7 +199,11 @@ async function verifyManualLocation() {
     const response = await fetch('/api/customer/verify-service-area', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin_code: servicePinCode.value }),
+      body: JSON.stringify({
+        city: serviceCity.value,
+        state: serviceState.value,
+        pin_code: servicePinCode.value,
+      }),
     })
     const data = await response.json()
     if (!response.ok) {
@@ -208,7 +220,7 @@ async function verifyManualLocation() {
     detectedLocation.value = {
       city: data.matched_area.city,
       state: data.matched_area.state,
-      pin_code: data.matched_area.pin_code,
+      pin_code: servicePinCode.value,
       full_address: serviceAddress.value,
     }
   } catch (error) {
@@ -243,6 +255,8 @@ async function submitBooking() {
         scheduled_for: scheduledFor.value,
         service_address: serviceAddress.value,
         service_pin_code: servicePinCode.value,
+        service_city: serviceCity.value,
+        service_state: serviceState.value,
         service_area_id: matchedServiceArea.value.id,
         latitude: currentLocation.value?.latitude,
         longitude: currentLocation.value?.longitude,
@@ -264,7 +278,7 @@ async function submitBooking() {
   }
 }
 
-watch([serviceAddress, servicePinCode], () => {
+watch([serviceAddress, serviceCity, serviceState, servicePinCode], () => {
   if (locationMethod.value === 'manual' && matchedServiceArea.value) {
     matchedServiceArea.value = null
     detectedLocation.value = null
@@ -308,25 +322,29 @@ onUnmounted(() => clearInterval(timerId))
           </section>
 
           <div v-if="!serviceAreaAvailable" class="booking-area-warning">
-            Your profile PIN is outside the current service network. You can continue only if the service address below has an admin-approved PIN code.
+            Your profile city is outside the current service network. You can continue only if the service address below is in an admin-approved city.
           </div>
 
           <div class="booking-location-methods" role="group" aria-label="Choose how to provide the service location">
             <button type="button" :class="{ 'is-active': locationMethod === 'gps' }" @click="chooseLocationMethod('gps')"><strong>Use current location</strong><small>Detect with GPS</small></button>
-            <button type="button" :class="{ 'is-active': locationMethod === 'manual' }" @click="chooseLocationMethod('manual')"><strong>Enter address manually</strong><small>Verify using PIN code</small></button>
+            <button type="button" :class="{ 'is-active': locationMethod === 'manual' }" @click="chooseLocationMethod('manual')"><strong>Enter address manually</strong><small>Verify city and state</small></button>
           </div>
 
           <section v-if="locationMethod === 'gps'" class="booking-location-check" :class="{ 'is-verified': matchedServiceArea }">
-            <div><small>CURRENT SERVICE LOCATION</small><strong v-if="matchedServiceArea">{{ detectedLocation.city || matchedServiceArea.city }}, {{ detectedLocation.state || matchedServiceArea.state }}</strong><strong v-else>Verify where the service is needed</strong><p v-if="matchedServiceArea">Matched with the admin-approved {{ matchedServiceArea.city }} area{{ locationMatchMethod === 'city' ? ' by city' : ' by PIN code' }}.</p><p v-else>We use this only to check availability and give the professional map directions.</p></div>
+            <div><small>CURRENT SERVICE LOCATION</small><strong v-if="matchedServiceArea">{{ detectedLocation.city || matchedServiceArea.city }}, {{ detectedLocation.state || matchedServiceArea.state }}</strong><strong v-else>Verify where the service is needed</strong><p v-if="matchedServiceArea">Matched with the admin-approved {{ matchedServiceArea.city }} city.</p><p v-else>We use this only to check availability and give the professional map directions.</p></div>
             <button type="button" :disabled="detectingLocation" @click="detectCurrentLocation">{{ detectingLocation ? 'Detecting…' : matchedServiceArea ? 'Detect again' : 'Use current location' }}</button>
           </section>
 
           <label>Preferred date and time<input v-model="scheduledFor" type="datetime-local" :min="earliestSchedule()" required /></label>
           <label>Service address<textarea v-model.trim="serviceAddress" rows="3" maxlength="200" :placeholder="locationMethod === 'manual' ? 'House number, street, locality, city and state' : ''" required></textarea></label>
-          <label>{{ locationMethod === 'manual' ? 'Service address PIN code' : 'Detected PIN code' }}<input v-model.trim="servicePinCode" inputmode="numeric" maxlength="20" :readonly="locationMethod === 'gps'" required /><small>The admin-approved area is {{ matchedServiceArea ? `${matchedServiceArea.city} — ${matchedServiceArea.pin_code}` : locationMethod === 'manual' ? 'checked using the PIN code you enter' : 'checked after location detection' }}.</small></label>
+          <div class="booking-location-fields">
+            <label>City<input v-model.trim="serviceCity" maxlength="100" :readonly="locationMethod === 'gps'" required /></label>
+            <label>State<input v-model.trim="serviceState" maxlength="100" :readonly="locationMethod === 'gps'" required /></label>
+          </div>
+          <label>{{ locationMethod === 'manual' ? 'Service address PIN code' : 'Detected PIN code' }}<input v-model.trim="servicePinCode" inputmode="numeric" maxlength="20" :readonly="locationMethod === 'gps'" /><small>Availability is checked using the city and state. The PIN code is retained for the exact service address.</small></label>
 
           <section v-if="locationMethod === 'manual'" class="booking-location-check manual-location-check" :class="{ 'is-verified': matchedServiceArea }">
-            <div><small>MANUAL SERVICE LOCATION</small><strong v-if="matchedServiceArea">Address verified for {{ matchedServiceArea.city }}</strong><strong v-else>Check service availability</strong><p v-if="matchedServiceArea">PIN {{ matchedServiceArea.pin_code }} is in an admin-approved service area.</p><p v-else>We will compare your PIN code with the areas created by the administrator.</p></div>
+            <div><small>MANUAL SERVICE LOCATION</small><strong v-if="matchedServiceArea">Address verified for {{ matchedServiceArea.city }}</strong><strong v-else>Check service availability</strong><p v-if="matchedServiceArea">{{ matchedServiceArea.city }}, {{ matchedServiceArea.state }} is an admin-approved city.</p><p v-else>We will compare the city and state with the administrator's service areas.</p></div>
             <button type="button" :disabled="verifyingManualLocation" @click="verifyManualLocation">{{ verifyingManualLocation ? 'Checking…' : matchedServiceArea ? 'Verified ✓' : 'Verify address' }}</button>
           </section>
           <label>What is the problem?<textarea v-model.trim="description" rows="5" maxlength="1000" placeholder="Example: The kitchen tap has been leaking since yesterday…" required></textarea><small>{{ description.length }}/1000</small></label>
@@ -398,7 +416,7 @@ onUnmounted(() => clearInterval(timerId))
         :open="manualAreaUnavailable"
         eyebrow="Service area check"
         title="HomeServe is not available at this address yet."
-        :description="manualUnavailableMessage || 'The PIN code does not match an admin-approved service area.'"
+        :description="manualUnavailableMessage || 'The city and state do not match an admin-approved service area.'"
         primary-label="Edit address"
         secondary-label="Browse services"
         symbol="⌖"

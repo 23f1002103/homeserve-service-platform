@@ -13,18 +13,6 @@ function authHeaders(includeJson = false) {
   return headers
 }
 
-async function saveDetectedArea(areaId) {
-  status.value = 'saving'
-  const response = await fetch('/api/professional/service-areas', {
-    method: 'PATCH',
-    headers: authHeaders(true),
-    body: JSON.stringify({ area_ids: [areaId] }),
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.message || 'Could not save your work area')
-  await router.replace('/professional/dashboard')
-}
-
 function detectLocation() {
   errorMessage.value = ''
   detectedLocation.value = null
@@ -56,7 +44,9 @@ function detectLocation() {
           return
         }
 
-        await saveDetectedArea(data.matched_area.id)
+        status.value = 'saving'
+        sessionStorage.setItem('professional_location_verified', '1')
+        await router.replace('/professional/dashboard')
       } catch (error) {
         status.value = 'error'
         errorMessage.value = error.message
@@ -72,24 +62,7 @@ function detectLocation() {
   )
 }
 
-async function prepareLocation() {
-  try {
-    const response = await fetch('/api/professional/service-areas', { headers: authHeaders() })
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.message || 'Could not check your saved areas')
-
-    if (data.selected_area_ids.length) {
-      await router.replace('/professional/dashboard')
-      return
-    }
-    detectLocation()
-  } catch (error) {
-    status.value = 'error'
-    errorMessage.value = error.message
-  }
-}
-
-onMounted(prepareLocation)
+onMounted(detectLocation)
 </script>
 
 <template>
@@ -108,11 +81,10 @@ onMounted(prepareLocation)
         <h1>HomeServe is not available here yet.</h1>
         <p>
           We detected <strong>{{ detectedLocation?.city || 'your current area' }}</strong><template v-if="detectedLocation?.pin_code"> — {{ detectedLocation.pin_code }}</template>,
-          but the admin has not added this area for service.
+          but the admin has not opened service in this city.
         </p>
         <div class="location-actions">
           <button type="button" @click="detectLocation">Try again</button>
-          <RouterLink to="/professional/service-areas">Choose another area</RouterLink>
         </div>
       </div>
 
@@ -122,7 +94,6 @@ onMounted(prepareLocation)
         <p class="location-error" role="alert">{{ errorMessage }}</p>
         <div class="location-actions">
           <button type="button" @click="detectLocation">Try again</button>
-          <RouterLink to="/professional/service-areas">Choose manually</RouterLink>
         </div>
       </div>
     </section>

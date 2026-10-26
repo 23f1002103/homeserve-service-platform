@@ -14,6 +14,7 @@ const submitting = ref(false)
 async function finishAuthentication(data) {
   localStorage.setItem('access_token', data.access_token)
   localStorage.setItem('user', JSON.stringify(data.user))
+  sessionStorage.removeItem('professional_location_verified')
 
   if (data.user.role === 'admin') {
     await router.push('/admin/dashboard')

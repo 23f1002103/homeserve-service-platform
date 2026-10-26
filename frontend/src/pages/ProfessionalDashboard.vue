@@ -18,7 +18,7 @@ async function loadDashboard() {
     if (!response.ok) throw new Error(data.message || 'Could not load your dashboard')
     if (data.approval_status === 'pending') return router.replace('/professional/pending')
     if (data.approval_status === 'blocked') return router.replace('/professional/blocked')
-    if (data.service_area_count === 0) return router.replace('/professional/location')
+    if (!data.location_verified || !data.current_area) return router.replace('/professional/location')
     dashboard.value = data
   } catch (error) { errorMessage.value = error.message }
 }
@@ -37,6 +37,10 @@ onMounted(loadDashboard)
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <div v-else-if="!dashboard" class="dashboard-loading">Preparing your field desk…</div>
       <template v-else>
+        <section class="professional-current-area">
+          <div><span aria-hidden="true">⌖</span><p><small>CURRENT WORK LOCATION</small><strong>{{ dashboard.current_area.city }}, {{ dashboard.current_area.state }}</strong></p></div>
+          <RouterLink to="/professional/location">Detect again</RouterLink>
+        </section>
         <section class="professional-summary">
           <article class="trade-card"><span>YOUR TRADE</span><strong>{{ dashboard.service }}</strong><small>{{ dashboard.city }}</small></article>
           <article><span>ACTIVE JOBS</span><strong>{{ dashboard.accepted_jobs }}</strong><small>Accepted requests</small></article>
@@ -55,12 +59,11 @@ onMounted(loadDashboard)
               <footer><time>{{ formatDate(job.scheduled_for) }}</time><strong>{{ job.price ? `₹${job.price}` : 'Price unavailable' }}</strong><RouterLink to="/professional/jobs">Open job</RouterLink></footer>
             </article>
           </div>
-          <div v-else class="empty-job-sheet"><span></span><div><h3>No matching requests right now.</h3><p>New paid bookings matching your trade and saved service area will appear here.</p></div></div>
+          <div v-else class="empty-job-sheet"><span></span><div><h3>No matching requests right now.</h3><p>New paid bookings matching your trade and current GPS city will appear here.</p></div></div>
         </section>
         <section class="role-page-links">
           <RouterLink to="/professional/jobs"><span>01</span><div><strong>My jobs</strong><small>View assignments and schedules</small></div><b>→</b></RouterLink>
-          <RouterLink to="/professional/service-areas"><span>02</span><div><strong>Service areas</strong><small>{{ dashboard.service_area_count }} areas assigned</small></div><b>→</b></RouterLink>
-          <RouterLink to="/professional/earnings"><span>03</span><div><strong>Weekly earnings</strong><small>Choose a week and view its payout</small></div><b>→</b></RouterLink>
+          <RouterLink to="/professional/earnings"><span>02</span><div><strong>Weekly earnings</strong><small>Choose a week and view its payout</small></div><b>→</b></RouterLink>
         </section>
       </template>
     </main>

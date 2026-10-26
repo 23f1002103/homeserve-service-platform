@@ -7,6 +7,7 @@ from flask import Blueprint, Response, request
 
 from ..auth.decorators import roles_required
 from ..database import db
+from ..location import normalize_city_name, normalize_state_name
 from ..models import (
     Customer,
     Professional,
@@ -20,6 +21,13 @@ from ..models import (
 
 
 admin = Blueprint("admin", __name__)
+
+
+def same_city_area(area, city, state):
+    return (
+        normalize_city_name(area.city) == normalize_city_name(city)
+        and normalize_state_name(area.state) == normalize_state_name(state)
+    )
 
 
 def professional_rating(professional_id):
@@ -479,7 +487,7 @@ def service_areas():
                 "city": area.city,
                 "state": area.state,
                 "pin_code": area.pin_code,
-                "professional_count": len(area.professionals),
+                "professional_count": len(area.active_professionals),
                 "demand_count": len(area.service_requests),
             }
             for area in area_list
@@ -498,11 +506,16 @@ def create_service_area():
     if not city or not state or not pin_code:
         return {"message": "City, state, and PIN code are required"}, 400
 
-    existing_area = db.session.scalar(
-        db.select(ServiceArea).where(ServiceArea.pin_code == pin_code)
+    existing_area = next(
+        (
+            area
+            for area in db.session.scalars(db.select(ServiceArea)).all()
+            if same_city_area(area, city, state)
+        ),
+        None,
     )
     if existing_area is not None:
-        return {"message": "This PIN code is already a service area"}, 409
+        return {"message": "This city and state are already a service area"}, 409
 
     area = ServiceArea(city=city, state=state, pin_code=pin_code)
     db.session.add(area)
@@ -534,14 +547,16 @@ def update_service_area(area_id):
     if not city or not state or not pin_code:
         return {"message": "City, state, and PIN code are required"}, 400
 
-    existing_area = db.session.scalar(
-        db.select(ServiceArea).where(
-            ServiceArea.pin_code == pin_code,
-            ServiceArea.id != area.id,
-        )
+    existing_area = next(
+        (
+            candidate
+            for candidate in db.session.scalars(db.select(ServiceArea)).all()
+            if candidate.id != area.id and same_city_area(candidate, city, state)
+        ),
+        None,
     )
     if existing_area is not None:
-        return {"message": "This PIN code is already a service area"}, 409
+        return {"message": "This city and state are already a service area"}, 409
 
     area.city = city
     area.state = state
@@ -566,9 +581,13 @@ def delete_service_area(area_id):
     if area is None:
         return {"message": "Service area not found"}, 404
 
-    if area.professionals:
+    if area.active_professionals:
         return {
-            "message": "This area cannot be deleted because professionals are using it"
+            "message": "This area cannot be deleted while a professional is active there"
+        }, 409
+    if area.service_requests:
+        return {
+            "message": "This area cannot be deleted because bookings use it"
         }, 409
 
     db.session.delete(area)

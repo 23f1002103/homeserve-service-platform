@@ -32,6 +32,11 @@ def user_data(user):
 
 
 def create_session_response(user, message="Login successful"):
+    if user.role == "professional" and user.professional is not None:
+        user.professional.active_service_area = None
+        user.professional.location_verified_at = None
+        db.session.commit()
+
     return {
         "message": message,
         "access_token": create_access_token(

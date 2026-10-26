@@ -138,7 +138,7 @@ onMounted(loadAreas)
     <main class="workbench-content admin-section-page">
       <header class="section-page-heading">
         <div><p class="workbench-label">NETWORK / AREAS</p><h1>Choose where<br />HomeServe works.</h1></div>
-        <p>Professionals can only select areas created here. Customer locations match by exact PIN first, then by city.</p>
+        <p>Each entry opens HomeServe across one city. Customer and professional locations match by normalized city and state.</p>
       </header>
       <section class="area-demand-panel">
         <div class="area-demand-panel__heading">
@@ -146,13 +146,13 @@ onMounted(loadAreas)
           <p>Demand is counted from bookings connected to each admin-approved service area.</p>
         </div>
         <div v-if="cityDemand.length" class="area-demand-chart">
-          <div class="area-network-summary"><span><strong>{{ cityCount }}</strong> cities</span><span><strong>{{ areas.length }}</strong> PIN-code areas</span><small>Top 5 cities ranked by booking demand</small></div>
+          <div class="area-network-summary"><span><strong>{{ cityCount }}</strong> cities</span><span><strong>{{ areas.length }}</strong> service areas</span><small>Top 5 cities ranked by booking demand</small></div>
           <div class="city-demand-plot">
             <div class="city-demand-scale" aria-hidden="true"><span>{{ maximumDemand }}</span><span>{{ Math.ceil(maximumDemand / 2) }}</span><span>0</span></div>
             <div class="city-demand-columns" :style="{ '--city-count': cityDemand.length }">
               <article v-for="(cityItem, index) in cityDemand" :key="`${cityItem.city}-${cityItem.state}`">
                 <div class="city-demand-column"><i :style="{ height: demandHeight(cityItem.demand_count) }"><strong>{{ cityItem.demand_count }}</strong></i></div>
-                <footer><span>#{{ index + 1 }}</span><b>{{ cityItem.city }}</b><small>{{ cityItem.state }} · {{ cityItem.area_count }} PIN area{{ cityItem.area_count === 1 ? '' : 's' }}</small></footer>
+                <footer><span>#{{ index + 1 }}</span><b>{{ cityItem.city }}</b><small>{{ cityItem.state }}</small></footer>
               </article>
             </div>
           </div>
@@ -165,7 +165,7 @@ onMounted(loadAreas)
         <p v-if="successMessage" class="profile-success service-manager-notice">{{ successMessage }}</p>
         <div class="service-manager__intro">
           <p class="workbench-label">{{ editingAreaId === null ? 'NEW SERVICE AREA' : 'EDIT SERVICE AREA' }}</p><h2>{{ editingAreaId === null ? 'Add one supported location.' : 'Update this location.' }}</h2>
-          <p>Enter a real city, state, and PIN code. Professionals see these names, not database IDs.</p>
+          <p>Enter one city and state. The PIN code is kept as a reference; coverage applies across the city.</p>
         </div>
         <form class="service-form" @submit.prevent="createArea">
           <label>City<input v-model.trim="city" placeholder="Example: Bengaluru" required /></label>
@@ -181,7 +181,7 @@ onMounted(loadAreas)
           <div class="area-list-caption"><span>{{ filteredAreas.length }} matching area{{ filteredAreas.length === 1 ? '' : 's' }}</span><span>Page {{ currentPage }} of {{ pageCount }}</span></div>
           <article v-for="(area, index) in paginatedAreas" :key="area.id">
             <span>{{ String((currentPage - 1) * pageSize + index + 1).padStart(2, '0') }}</span>
-            <div><strong>{{ area.city }}, {{ area.state }}</strong><small>{{ area.professional_count }} professional(s) selected this area</small></div>
+            <div><strong>{{ area.city }}, {{ area.state }}</strong><small>{{ area.professional_count }} professional(s) currently active here</small></div>
             <code>{{ area.pin_code }}</code>
             <div class="area-row-actions">
               <button type="button" class="area-edit-button" :disabled="deletingAreaId === area.id" @click="editArea(area)">Edit</button>
@@ -199,7 +199,7 @@ onMounted(loadAreas)
       :open="Boolean(pendingDeleteArea)"
       eyebrow="Service network"
       :title="`Delete ${pendingDeleteArea?.city || 'this area'}?`"
-      :description="`PIN ${pendingDeleteArea?.pin_code || ''} will no longer be available for new professionals or bookings. This cannot be undone.`"
+      :description="`${pendingDeleteArea?.city || 'This city'} will no longer be available for professionals or bookings. This cannot be undone.`"
       confirm-label="Delete area"
       :busy="deletingAreaId === pendingDeleteArea?.id"
       danger

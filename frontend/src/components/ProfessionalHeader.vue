@@ -10,12 +10,12 @@ const links = [
   { name: 'Overview', path: '/professional/dashboard', key: 'overview' },
   { name: 'My jobs', path: '/professional/jobs', key: 'jobs' },
   { name: 'Earnings', path: '/professional/earnings', key: 'earnings' },
-  { name: 'Service areas', path: '/professional/service-areas', key: 'areas' },
 ]
 
 function logout() {
   localStorage.removeItem('access_token')
   localStorage.removeItem('user')
+  sessionStorage.removeItem('professional_location_verified')
   router.push('/login')
 }
 </script>

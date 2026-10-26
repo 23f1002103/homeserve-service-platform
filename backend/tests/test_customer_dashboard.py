@@ -159,6 +159,8 @@ class CustomerDashboardTestCase(unittest.TestCase):
                     "Bengaluru Central City Corporation - 560001"
                 ),
                 "service_pin_code": "560001",
+                "service_city": "Bengaluru",
+                "service_state": "Karnataka",
                 "service_area_id": area_id,
                 "latitude": 12.9716,
                 "longitude": 77.5946,
@@ -229,6 +231,8 @@ class CustomerDashboardTestCase(unittest.TestCase):
                 "scheduled_for": "2099-01-20T10:30",
                 "service_address": "Outside service area",
                 "service_pin_code": "999999",
+                "service_city": "Mysuru",
+                "service_state": "Karnataka",
                 "description": "Test request",
             },
         )
@@ -244,7 +248,11 @@ class CustomerDashboardTestCase(unittest.TestCase):
         verification = self.client.post(
             "/api/customer/verify-service-area",
             headers=headers,
-            json={"pin_code": "560001"},
+            json={
+                "city": "Bangalore",
+                "state": "Karnataka",
+                "pin_code": "560099",
+            },
         )
         response = self.client.post(
             "/api/customer/bookings",
@@ -253,7 +261,9 @@ class CustomerDashboardTestCase(unittest.TestCase):
                 "service_type_id": service_id,
                 "scheduled_for": "2099-01-20T10:30",
                 "service_address": "88 Manual Address, Bengaluru",
-                "service_pin_code": "560001",
+                "service_pin_code": "560099",
+                "service_city": "Bangalore",
+                "service_state": "Karnataka",
                 "service_area_id": area_id,
                 "description": "Manual-address booking test",
             },
@@ -268,17 +278,21 @@ class CustomerDashboardTestCase(unittest.TestCase):
             self.assertIsNone(booking.longitude)
             self.assertEqual(booking.service_area_id, area_id)
 
-    def test_manual_service_area_verification_rejects_unavailable_pin(self):
+    def test_manual_service_area_verification_rejects_unavailable_city(self):
         response = self.client.post(
             "/api/customer/verify-service-area",
             headers={"Authorization": f"Bearer {self.token}"},
-            json={"pin_code": "999999"},
+            json={
+                "city": "Mysuru",
+                "state": "Karnataka",
+                "pin_code": "570001",
+            },
         )
 
         self.assertEqual(response.status_code, 404)
         self.assertIsNone(response.get_json()["matched_area"])
 
-    def test_manual_booking_cannot_use_an_area_id_with_a_different_pin(self):
+    def test_manual_booking_cannot_use_an_area_id_with_a_different_city(self):
         with self.app.app_context():
             service_id = db.session.scalar(db.select(ServiceType.id))
             area_id = db.session.scalar(db.select(ServiceArea.id))
@@ -291,6 +305,8 @@ class CustomerDashboardTestCase(unittest.TestCase):
                 "scheduled_for": "2099-01-20T10:30",
                 "service_address": "Outside service area",
                 "service_pin_code": "999999",
+                "service_city": "Mysuru",
+                "service_state": "Karnataka",
                 "service_area_id": area_id,
                 "description": "Forged service-area ID test",
             },
@@ -330,7 +346,7 @@ class CustomerDashboardTestCase(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json()["match_method"], "city")
+        self.assertEqual(response.get_json()["match_method"], "city_state")
         self.assertEqual(response.get_json()["matched_area"]["city"], "Bengaluru")
 
 

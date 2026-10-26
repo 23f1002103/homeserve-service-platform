@@ -20,7 +20,6 @@ import ProfessionalLocationPage from '../pages/ProfessionalLocationPage.vue'
 import ProfessionalJobsPage from '../pages/ProfessionalJobsPage.vue'
 import ProfessionalProfilePage from '../pages/ProfessionalProfilePage.vue'
 import ProfessionalEarningsPage from '../pages/ProfessionalEarningsPage.vue'
-import ProfessionalServiceAreasPage from '../pages/ProfessionalServiceAreasPage.vue'
 import ProfessionalPendingPage from '../pages/ProfessionalPendingPage.vue'
 import ProfessionalBlockedPage from '../pages/ProfessionalBlockedPage.vue'
 import { clearSession, tokenIsExpired } from '../utils/auth'
@@ -135,12 +134,6 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'professional' },
     },
     {
-      path: '/professional/service-areas',
-      name: 'professional-service-areas',
-      component: ProfessionalServiceAreasPage,
-      meta: { requiresAuth: true, role: 'professional' },
-    },
-    {
       path: '/professional/pending',
       name: 'professional-pending',
       component: ProfessionalPendingPage,
@@ -167,6 +160,12 @@ router.beforeEach((to) => {
     return { name: 'login', query: { expired: '1' } }
   }
   if (to.meta.role && user.role !== to.meta.role) return '/'
+  if (
+    user.role === 'professional'
+    && user.approval_status === 'approved'
+    && !['professional-location', 'professional-pending', 'professional-blocked'].includes(to.name)
+    && sessionStorage.getItem('professional_location_verified') !== '1'
+  ) return { name: 'professional-location' }
 
   return true
 })

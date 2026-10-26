@@ -62,7 +62,7 @@ class ServiceAreaTestCase(unittest.TestCase):
                 pin_code="570001",
                 service_type_id=service.id,
             )
-            profile.service_areas.append(area)
+            profile.active_service_area = area
             db.session.add(profile)
             db.session.commit()
             area_id = area.id
@@ -96,7 +96,7 @@ class ServiceAreaTestCase(unittest.TestCase):
                 pin_code="563125",
                 service_type_id=service.id,
             )
-            profile.service_areas.append(area)
+            profile.active_service_area = area
             db.session.add(profile)
             db.session.commit()
             area_id = area.id
@@ -116,15 +116,15 @@ class ServiceAreaTestCase(unittest.TestCase):
             area = db.session.get(ServiceArea, area_id)
             self.assertEqual(area.city, "Chintamani / Kanampalli")
             self.assertEqual(area.pin_code, "563125")
-            self.assertEqual(len(area.professionals), 1)
+            self.assertEqual(len(area.active_professionals), 1)
 
-    def test_admin_cannot_edit_area_to_duplicate_pin(self):
+    def test_admin_cannot_edit_area_to_duplicate_city_and_state(self):
         with self.app.app_context():
             first = ServiceArea(
-                city="Chintamani", state="Karnataka", pin_code="563125"
+                city="Bengaluru", state="Karnataka", pin_code="560001"
             )
             second = ServiceArea(
-                city="Bengaluru", state="Karnataka", pin_code="560001"
+                city="Mysuru", state="Karnataka", pin_code="570001"
             )
             db.session.add_all([first, second])
             db.session.commit()
@@ -134,16 +134,16 @@ class ServiceAreaTestCase(unittest.TestCase):
             f"/api/admin/service-areas/{second_id}",
             headers={"Authorization": f"Bearer {self.admin_token}"},
             json={
-                "city": "Bengaluru",
+                "city": "Bangalore",
                 "state": "Karnataka",
-                "pin_code": "563125",
+                "pin_code": "570001",
             },
         )
 
         self.assertEqual(response.status_code, 409)
         self.assertEqual(
             response.get_json()["message"],
-            "This PIN code is already a service area",
+            "This city and state are already a service area",
         )
 
 

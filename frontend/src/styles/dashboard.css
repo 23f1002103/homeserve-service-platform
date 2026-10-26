@@ -318,6 +318,13 @@
 .dashboard-available-work > header h2 { margin: 5px 0 0; font: 500 clamp(2rem, 4vw, 3.5rem) Georgia, serif; }
 .dashboard-available-work > header > a { padding-bottom: 7px; border-bottom: 1px solid #a55232; color: #8c452c; font-size: 0.75rem; font-weight: 850; }
 .dashboard-job-preview footer a { padding: 10px 13px; color: #fff; background: #205541; font-size: 0.71rem; font-weight: 850; text-align: center; }
+.professional-current-area { display: flex; gap: 25px; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 18px 22px; color: #f4f1e8; background: #213a37; }
+.professional-current-area > div { display: flex; gap: 15px; align-items: center; }
+.professional-current-area > div > span { font-size: 1.8rem; }
+.professional-current-area p { display: grid; gap: 4px; margin: 0; }
+.professional-current-area small { color: #b9c9c2; font-size: 0.58rem; font-weight: 850; letter-spacing: 0.14em; }
+.professional-current-area strong { font: 500 1.15rem Georgia, serif; }
+.professional-current-area > a { padding: 9px 12px; border: 1px solid #8ca49b; color: #fff; font-size: 0.68rem; font-weight: 850; }
 
 .admin-revenue-strip { display: grid; grid-template-columns: 1.5fr 0.7fr 0.7fr; margin-top: 24px; border: 1px solid #9fa8a2; background: #f5f3ed; }
 .admin-revenue-strip > div { display: grid; gap: 7px; min-height: 145px; padding: 24px; align-content: center; border-right: 1px solid #b6bcb7; }
@@ -671,6 +678,8 @@
 .booking-form-panel input:focus,
 .booking-form-panel textarea:focus { border-color: #285b47; outline: 2px solid rgb(40 91 71 / 13%); }
 .booking-form-panel label > small { justify-self: end; color: #828b85; font-weight: 500; }
+.booking-location-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.booking-location-fields label { display: grid; gap: 8px; color: #46564e; font-size: 0.72rem; font-weight: 850; }
 .booking-area-warning { padding: 15px; border-left: 4px solid #a84f31; color: #70402f; background: #f1dfd7; font-size: 0.78rem; line-height: 1.5; }
 .booking-location-methods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 6px; border: 1px solid #b9c1bb; background: #eeece5; }
 .booking-location-methods button { display: grid; gap: 4px; padding: 14px; border: 1px solid transparent; color: #56635c; background: transparent; text-align: left; }
@@ -974,6 +983,7 @@
   .location-card { min-height: 480px; margin-top: 5vh; padding: 28px 20px; }
   .location-actions,
   .dashboard-available-work > header { align-items: stretch; flex-direction: column; }
+  .professional-current-area { align-items: flex-start; flex-direction: column; }
   .job-list article { grid-template-columns: 55px 1fr auto; padding-block: 15px; }
   .job-list time { grid-column: 2; }
   .job-status { grid-column: 3; grid-row: 1 / span 2; }
@@ -1049,6 +1059,7 @@
   .customer-service-grid > article { min-height: 300px; padding: 23px; }
   .booking-checkout__intro,
   .booking-form-panel { padding: 30px 23px; }
+  .booking-location-fields { grid-template-columns: 1fr; }
   .booking-checkout__intro ol { grid-template-columns: 1fr; }
   .booking-checkout__intro li { grid-template-columns: 35px 1fr; }
   .booking-location-check { grid-template-columns: 1fr; }

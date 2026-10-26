@@ -29,8 +29,8 @@ onMounted(loadServices)
     <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
 
     <section v-if="area" class="customer-area-strip" :class="{ 'is-unavailable': !serviceAreaAvailable }">
-      <div><small>SERVICE LOCATION</small><strong>{{ area.city }} · {{ area.pin_code }}</strong></div>
-      <p>{{ serviceAreaAvailable ? 'HomeServe professionals are available in this area.' : 'HomeServe has not opened service in this PIN code yet.' }}</p>
+      <div><small>SERVICE LOCATION</small><strong>{{ area.city }} · {{ area.state }}</strong></div>
+      <p>{{ serviceAreaAvailable ? 'HomeServe professionals are available in this city.' : 'HomeServe has not opened service in this city yet.' }}</p>
     </section>
 
     <label class="list-search standalone-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search household services" aria-label="Search services" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label>

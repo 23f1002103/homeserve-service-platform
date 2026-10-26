@@ -1,7 +1,10 @@
 import io
 import unittest
+from datetime import datetime
+from unittest.mock import patch
 
 from flask_jwt_extended import create_access_token
+from werkzeug.security import generate_password_hash
 
 from app import create_app
 from app.database import db
@@ -77,14 +80,11 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
 
         jobs = self.client.get("/api/professional/jobs", headers=headers)
         profile = self.client.get("/api/professional/profile", headers=headers)
-        areas = self.client.get("/api/professional/service-areas", headers=headers)
 
         self.assertEqual(jobs.status_code, 200)
         self.assertIn("jobs", jobs.get_json())
         self.assertEqual(profile.status_code, 200)
         self.assertIn("profile", profile.get_json())
-        self.assertEqual(areas.status_code, 200)
-        self.assertIn("available_areas", areas.get_json())
 
     def test_professional_can_update_profile_fields(self):
         response = self.client.patch(
@@ -105,6 +105,30 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             professional = db.session.scalar(db.select(Professional))
             self.assertEqual(professional.experience_years, 5)
             self.assertEqual(professional.city, "Mysuru")
+
+    def test_login_requires_a_fresh_gps_location(self):
+        with self.app.app_context():
+            professional = db.session.scalar(db.select(Professional))
+            professional.approval_status = "approved"
+            professional.user.password_hash = generate_password_hash("password123")
+            area = ServiceArea(
+                city="Bengaluru", state="Karnataka", pin_code="560001"
+            )
+            professional.active_service_area = area
+            professional.location_verified_at = datetime.now()
+            db.session.add(area)
+            db.session.commit()
+
+        response = self.client.post(
+            "/api/auth/login",
+            json={"email": "pro@example.com", "password": "password123"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            professional = db.session.scalar(db.select(Professional))
+            self.assertIsNone(professional.active_service_area_id)
+            self.assertIsNone(professional.location_verified_at)
 
     def test_professional_photo_rejects_non_image_content(self):
         response = self.client.put(
@@ -128,8 +152,11 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_professional_can_select_service_areas(self):
+    @patch("app.professional.routes.get_address_from_coordinates")
+    def test_gps_sets_one_active_city_even_when_pin_differs(self, reverse_lookup):
         with self.app.app_context():
+            professional = db.session.scalar(db.select(Professional))
+            professional.approval_status = "approved"
             area = ServiceArea(
                 city="Bengaluru", state="Karnataka", pin_code="560001"
             )
@@ -137,19 +164,25 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             db.session.commit()
             area_id = area.id
 
+        reverse_lookup.return_value = {
+            "city": "Bangalore",
+            "state": "Karnataka",
+            "pin_code": "560099",
+            "full_address": "Test Road, Bangalore, Karnataka 560099",
+        }
         headers = {"Authorization": f"Bearer {self.professional_token}"}
-        update = self.client.patch(
-            "/api/professional/service-areas",
+        detected = self.client.post(
+            "/api/professional/detect-service-area",
             headers=headers,
-            json={"area_ids": [area_id]},
-        )
-        result = self.client.get(
-            "/api/professional/service-areas", headers=headers
+            json={"latitude": 12.9, "longitude": 77.6},
         )
 
-        self.assertEqual(update.status_code, 200)
-        self.assertEqual(result.status_code, 200)
-        self.assertEqual(result.get_json()["selected_area_ids"], [area_id])
+        self.assertEqual(detected.status_code, 200)
+        self.assertEqual(detected.get_json()["matched_area"]["id"], area_id)
+        with self.app.app_context():
+            professional = db.session.scalar(db.select(Professional))
+            self.assertEqual(professional.active_service_area_id, area_id)
+            self.assertIsNotNone(professional.location_verified_at)
 
     def test_approved_professional_can_see_and_accept_matching_job(self):
         with self.app.app_context():
@@ -173,7 +206,8 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             )
             db.session.add_all([area, customer_user, second_professional_user])
             db.session.flush()
-            professional.service_areas.append(area)
+            professional.active_service_area = area
+            professional.location_verified_at = datetime.now()
             second_professional = Professional(
                 user_id=second_professional_user.id,
                 address="Second professional road",
@@ -183,7 +217,8 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
                 service_type_id=professional.service_type_id,
                 approval_status="approved",
             )
-            second_professional.service_areas.append(area)
+            second_professional.active_service_area = area
+            second_professional.location_verified_at = datetime.now()
             db.session.add(second_professional)
             customer = Customer(
                 user_id=customer_user.id,
@@ -357,6 +392,10 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(len(available.get_json()["available_jobs"]), 2)
         self.assertEqual(dashboard_available.get_json()["available_job_count"], 2)
         self.assertEqual(len(dashboard_available.get_json()["available_jobs"]), 2)
+        self.assertTrue(dashboard_available.get_json()["location_verified"])
+        self.assertEqual(
+            dashboard_available.get_json()["current_area"]["city"], "Bengaluru"
+        )
         self.assertNotIn("directions_url", available.get_json()["available_jobs"][0])
         self.assertEqual(accepted.status_code, 200)
         self.assertEqual(customer_bookings.status_code, 200)
