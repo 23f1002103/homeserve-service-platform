@@ -39,6 +39,11 @@ const demoUpiAddress = ref('')
 const secondsLeft = ref(300)
 let timerId
 
+const resumeBookingId = computed(() => {
+  const value = Number(route.query.resume)
+  return Number.isInteger(value) && value > 0 ? value : null
+})
+
 const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
 
 function earliestSchedule() {
@@ -86,9 +91,26 @@ async function completeDemoPayment(result) {
 function closeDemoPayment() {
   clearInterval(timerId)
   demoPayment.value = null
+  if (resumeBookingId.value) router.push('/customer/bookings')
 }
 
 function retryDemoPayment() {
+  paymentScreen.value = 'ready'
+  paymentMethod.value = 'qr'
+  demoUpiAddress.value = ''
+  startDemoTimer()
+}
+
+async function resumeDemoPayment() {
+  const response = await fetch(`/api/customer/bookings/${resumeBookingId.value}/resume-demo-payment`, {
+    method: 'POST',
+    headers,
+  })
+  const data = await response.json()
+  if (!response.ok) throw new Error(data.message || 'Could not reopen this payment')
+
+  bookingId.value = data.booking_id
+  demoPayment.value = data.demo_payment
   paymentScreen.value = 'ready'
   paymentMethod.value = 'qr'
   demoUpiAddress.value = ''
@@ -119,6 +141,7 @@ async function loadBookingPage() {
     serviceCity.value = profile.value.city
     serviceState.value = profile.value.state
     scheduledFor.value = earliestSchedule()
+    if (resumeBookingId.value) await resumeDemoPayment()
   } catch (error) {
     errorMessage.value = error.message
   }

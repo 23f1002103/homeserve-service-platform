@@ -483,6 +483,49 @@ def complete_demo_payment(booking_id):
     }, 200
 
 
+@customer.post("/bookings/<int:booking_id>/resume-demo-payment")
+@roles_required("customer")
+def resume_demo_payment(booking_id):
+    """Create a fresh demo checkout session for an unpaid customer booking."""
+    user_id = int(get_jwt_identity())
+    profile = db.session.scalar(
+        db.select(Customer).where(Customer.user_id == user_id)
+    )
+    booking = db.session.scalar(
+        db.select(ServiceRequest).where(
+            ServiceRequest.id == booking_id,
+            ServiceRequest.customer_id == profile.id,
+        )
+    ) if profile else None
+    if booking is None or not booking.payments:
+        return {"message": "Booking payment not found"}, 404
+    if booking.status != "payment_pending":
+        return {"message": "This booking is not awaiting payment"}, 409
+
+    payment = booking.payments[0]
+    if payment.status == "completed":
+        return {"message": "Payment was already verified"}, 409
+    if payment.status in {"cancelled", "refunded"}:
+        return {"message": "Payment cannot be resumed for this booking"}, 409
+
+    payment.provider_order_id = f"demo_order_{uuid4().hex[:20]}"
+    payment.provider_payment_id = None
+    payment.status = "pending"
+    db.session.commit()
+
+    return {
+        "message": "Demo payment is ready to continue",
+        "booking_id": booking.id,
+        "demo_payment": {
+            "order_id": payment.provider_order_id,
+            "amount": str(payment.amount),
+            "currency": "INR",
+            "payee": "HomeServe Demo",
+            "demo_upi_id": "homeserve.demo@upi",
+        },
+    }, 200
+
+
 @customer.get("/bookings/<int:booking_id>/invoice")
 @roles_required("customer")
 def download_invoice(booking_id):
@@ -614,6 +657,7 @@ def bookings():
         "bookings": [
             {
                 "id": booking.id,
+                "service_type_id": booking.service_type_id,
                 "service": booking.service_type.name,
                 "professional": (
                     booking.professional.user.username

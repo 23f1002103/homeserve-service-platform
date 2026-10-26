@@ -148,6 +148,7 @@ onMounted(loadBookings)
             <span v-else class="assigned-professional-no-phone">Contact number not added</span>
           </section>
           <div v-if="booking.payment_status === 'completed'" class="booking-document-row"><div><strong>Payment invoice</strong><small>A PDF copy for your records.</small></div><button type="button" :disabled="downloadingInvoiceId === booking.id" @click="downloadInvoice(booking)">{{ downloadingInvoiceId === booking.id ? 'Preparing…' : 'Download PDF' }}</button></div>
+          <div v-if="booking.status === 'payment_pending'" class="booking-payment-action"><div><strong>Payment still pending</strong><small>Complete the demo payment to confirm this booking and make it visible to professionals.</small></div><RouterLink :to="{ name: 'customer-book-service', params: { serviceId: booking.service_type_id }, query: { resume: booking.id } }">Pay now</RouterLink></div>
           <div v-if="booking.status === 'cancelled'" class="booking-cancelled-note"><span>×</span><div><strong>Booking cancelled</strong><p>No professional can accept this request. {{ booking.payment_status === 'refunded' ? 'The demo payment is marked as refunded.' : '' }}</p></div></div>
           <div v-else class="booking-progress" :class="`booking-progress--${booking.status}`"><span>Requested</span><i></i><span>Accepted</span><i></i><span>Completed</span></div>
 

@@ -215,6 +215,66 @@ class CustomerDashboardTestCase(unittest.TestCase):
             self.assertEqual(booking.status, "cancelled")
             self.assertEqual(payment.status, "refunded")
 
+    def test_customer_can_resume_payment_for_an_unpaid_booking(self):
+        with self.app.app_context():
+            customer = db.session.scalar(db.select(Customer))
+            service = db.session.scalar(db.select(ServiceType))
+            area = db.session.scalar(db.select(ServiceArea))
+            booking = ServiceRequest(
+                customer_id=customer.id,
+                service_type_id=service.id,
+                service_area_id=area.id,
+                service_address="12 Main Road",
+                scheduled_for=None,
+                status="payment_pending",
+            )
+            db.session.add(booking)
+            db.session.flush()
+            payment = Payment(
+                service_request_id=booking.id,
+                amount="499.00",
+                commission_rate="15.00",
+                platform_fee="74.85",
+                professional_earning="424.15",
+                payment_method="demo_upi",
+                status="failed",
+                provider_order_id="demo_order_expired",
+            )
+            db.session.add(payment)
+            db.session.commit()
+            booking_id = booking.id
+            service_id = service.id
+
+        headers = {"Authorization": f"Bearer {self.token}"}
+        bookings_response = self.client.get("/api/customer/bookings", headers=headers)
+        listed_booking = bookings_response.get_json()["bookings"][0]
+        self.assertEqual(listed_booking["service_type_id"], service_id)
+
+        resume_response = self.client.post(
+            f"/api/customer/bookings/{booking_id}/resume-demo-payment",
+            headers=headers,
+        )
+        self.assertEqual(resume_response.status_code, 200)
+        resumed = resume_response.get_json()
+        self.assertNotEqual(
+            resumed["demo_payment"]["order_id"],
+            "demo_order_expired",
+        )
+
+        complete_response = self.client.post(
+            f"/api/customer/bookings/{booking_id}/complete-demo-payment",
+            headers=headers,
+            json={
+                "order_id": resumed["demo_payment"]["order_id"],
+                "result": "success",
+            },
+        )
+        self.assertEqual(complete_response.status_code, 200)
+        with self.app.app_context():
+            saved_booking = db.session.get(ServiceRequest, booking_id)
+            self.assertEqual(saved_booking.status, "pending")
+            self.assertEqual(saved_booking.payments[0].status, "completed")
+
     def test_booking_is_rejected_outside_service_area(self):
         with self.app.app_context():
             customer = db.session.scalar(db.select(Customer))

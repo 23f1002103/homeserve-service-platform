@@ -905,6 +905,12 @@
 .revenue-export-button { padding: 10px 14px; border: 1px solid #315d4d; color: #fff; background: #315d4d; font-size: 0.68rem; font-weight: 850; white-space: nowrap; }
 .booking-document-row button:disabled,
 .revenue-export-button:disabled { cursor: wait; opacity: 0.55; }
+.booking-payment-action { display: flex; gap: 20px; justify-content: space-between; align-items: center; margin-top: 16px; padding: 16px 17px; border: 1px solid #9eb9aa; background: #e8f1ec; }
+.booking-payment-action > div { display: grid; gap: 4px; }
+.booking-payment-action strong { color: #1f5943; font-size: 0.76rem; }
+.booking-payment-action small { color: #60746a; line-height: 1.45; }
+.booking-payment-action > a { padding: 10px 16px; border: 1px solid #1f5943; color: #fff; background: #1f5943; font-size: 0.68rem; font-weight: 850; white-space: nowrap; }
+.booking-payment-action > a:hover { background: #174634; }
 .booking-cancelled-note { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; padding: 16px; border-left: 4px solid #82726a; background: #ece8e4; }
 .booking-cancelled-note > span { display: grid; width: 31px; height: 31px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #fff; background: #82726a; }
 .booking-cancelled-note > div { display: grid; gap: 4px; }
@@ -1161,6 +1167,8 @@
   .booking-cancel-action button { align-self: start; }
   .booking-document-row { align-items: stretch; flex-direction: column; }
   .booking-document-row button { align-self: start; }
+  .booking-payment-action { align-items: stretch; flex-direction: column; }
+  .booking-payment-action > a { align-self: start; }
   .available-job-list > article { grid-template-columns: 1fr; gap: 18px; }
   .available-job-list article > header { min-height: 55px; padding: 0 0 13px; border-right: 0; border-bottom: 1px solid #ccd0cb; }
   .available-job-list footer { grid-column: auto; grid-row: auto; grid-template-columns: 1fr; text-align: left; }
