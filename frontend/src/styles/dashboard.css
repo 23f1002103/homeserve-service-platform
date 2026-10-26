@@ -299,19 +299,38 @@
 
 .professional-location-page { min-height: 100vh; padding: 32px; color: #213a37; background: #ece8dc; }
 .location-brand { display: inline-block; color: #213a37; font-family: Georgia, serif; font-size: 1.35rem; font-weight: 700; }
-.location-card { display: grid; width: min(850px, 100%); min-height: 520px; margin: 8vh auto 0; padding: clamp(35px, 7vw, 75px); place-items: center; border: 1px solid #aab0a8; background: #f7f4eb; }
+.location-card { display: grid; width: min(920px, 100%); min-height: 610px; margin: 5vh auto 0; padding: clamp(35px, 6vw, 68px); place-items: center; border: 1px solid #aab0a8; background: #f7f4eb; }
 .location-progress,
-.location-result { width: min(100%, 650px); text-align: center; }
+.location-result { width: min(100%, 720px); text-align: center; }
 .location-card h1 { margin: 16px 0; font: 500 clamp(2.6rem, 7vw, 5.3rem)/0.95 Georgia, serif; }
 .location-card p:not(.workbench-label) { color: #68746d; line-height: 1.7; }
-.location-pulse { position: relative; display: block; width: 76px; height: 76px; margin: 0 auto 34px; border: 1px solid #a55232; border-radius: 50%; }
-.location-pulse::before { position: absolute; inset: 18px; border-radius: inherit; background: #a55232; content: ''; animation: location-pulse 1.4s ease-in-out infinite; }
+.location-radar { position: relative; display: grid; width: 190px; height: 190px; margin: 0 auto 38px; place-items: center; }
+.location-radar__wave { position: absolute; width: 142px; height: 142px; border: 1px solid rgb(165 82 50 / 55%); border-radius: 50%; animation: location-radar-wave 2.4s cubic-bezier(.2, .6, .3, 1) infinite; }
+.location-radar__wave:nth-child(2) { animation-delay: 800ms; }
+.location-radar__wave:nth-child(3) { animation-delay: 1.6s; }
+.location-map-disc { position: relative; z-index: 2; width: 132px; height: 132px; overflow: hidden; border: 1px solid #75877f; border-radius: 50%; background: #dce2d8; box-shadow: 0 15px 35px rgb(38 63 54 / 18%); }
+.location-map-disc::after { position: absolute; inset: 0; border: 7px solid rgb(247 244 235 / 55%); border-radius: inherit; content: ''; pointer-events: none; }
+.location-map-lines { position: absolute; inset: -7%; width: 114%; height: 114%; fill: none; stroke: #f8f5ec; stroke-linecap: round; stroke-width: 9; }
+.location-map-lines__minor { opacity: 0.75; stroke: #b9c7bb; stroke-width: 2; }
+.location-map-marker { position: absolute; top: 50%; left: 50%; z-index: 3; display: grid; width: 46px; height: 46px; place-items: center; border: 5px solid rgb(247 244 235 / 88%); border-radius: 50%; background: #a55232; box-shadow: 0 7px 18px rgb(76 48 35 / 28%); transform: translate(-50%, -50%); animation: location-marker-float 1.35s ease-in-out infinite; }
+.location-map-marker svg { width: 23px; fill: none; stroke: #fff; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.location-map-marker circle { fill: #fff; stroke: none; }
+.location-radar.is-confirmed .location-radar__wave { border-color: rgb(39 102 77 / 55%); animation-duration: 1.2s; }
+.location-radar.is-confirmed .location-map-marker { background: #27664d; animation: none; }
 .location-actions { display: flex; gap: 12px; justify-content: center; margin-top: 30px; }
 .location-actions button,
 .location-actions a { padding: 12px 17px; border: 1px solid #21483b; color: #fff; background: #21483b; font-size: 0.75rem; font-weight: 850; }
 .location-actions a { color: #21483b; background: transparent; }
 .location-error { color: #8a3029 !important; }
-@keyframes location-pulse { 0%, 100% { opacity: 0.45; transform: scale(0.72); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes location-radar-wave { 0% { opacity: 0.9; transform: scale(0.72); } 75%, 100% { opacity: 0; transform: scale(1.34); } }
+@keyframes location-marker-float { 0%, 100% { transform: translate(-50%, -52%); } 50% { transform: translate(-50%, -45%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .location-radar__wave,
+  .location-map-marker { animation: none; }
+  .location-radar__wave:nth-child(2),
+  .location-radar__wave:nth-child(3) { display: none; }
+}
 
 .dashboard-available-work { margin-top: 65px; }
 .dashboard-available-work > header { display: flex; gap: 30px; align-items: end; justify-content: space-between; margin-bottom: 24px; }
@@ -980,7 +999,10 @@
   .professional-summary .earning-card { grid-column: auto; }
   .professional-summary article { min-height: 165px; border-right: 0; border-bottom: 1px solid #adb2ab; }
   .professional-location-page { padding: 18px; }
-  .location-card { min-height: 480px; margin-top: 5vh; padding: 28px 20px; }
+  .location-card { min-height: 540px; margin-top: 3vh; padding: 28px 20px; }
+  .location-radar { width: 160px; height: 160px; margin-bottom: 30px; }
+  .location-map-disc { width: 112px; height: 112px; }
+  .location-radar__wave { width: 120px; height: 120px; }
   .location-actions,
   .dashboard-available-work > header { align-items: stretch; flex-direction: column; }
   .professional-current-area { align-items: flex-start; flex-direction: column; }

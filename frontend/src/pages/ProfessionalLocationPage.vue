@@ -70,7 +70,26 @@ onMounted(detectLocation)
     <RouterLink class="location-brand" to="/">HomeServe</RouterLink>
     <section class="location-card" aria-live="polite">
       <div v-if="status === 'checking' || status === 'locating' || status === 'saving'" class="location-progress">
-        <span class="location-pulse" aria-hidden="true"></span>
+        <div class="location-radar" :class="{ 'is-confirmed': status === 'saving' }" aria-hidden="true">
+          <span class="location-radar__wave"></span>
+          <span class="location-radar__wave"></span>
+          <span class="location-radar__wave"></span>
+          <div class="location-map-disc">
+            <svg class="location-map-lines" viewBox="0 0 180 180" role="presentation">
+              <path d="M-12 48C28 37 49 55 72 82s55 28 119 5" />
+              <path d="M22-8c7 37 3 61-15 89s-10 61 16 105" />
+              <path d="M91-5c-8 32-3 55 18 72s35 42 34 119" />
+              <path d="M-8 131c44-19 72-17 94 4s50 24 102 10" />
+              <path class="location-map-lines__minor" d="M-5 91h190M58-5v190M-2 20l184 139M130-4L39 184" />
+            </svg>
+            <span class="location-map-marker">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M12 22s7-6.25 7-13a7 7 0 1 0-14 0c0 6.75 7 13 7 13Z" />
+                <circle cx="12" cy="9" r="2.5" />
+              </svg>
+            </span>
+          </div>
+        </div>
         <p class="workbench-label">SETTING UP YOUR WORK AREA</p>
         <h1>{{ status === 'saving' ? 'Area found.' : 'Fetching your current location…' }}</h1>
         <p>{{ status === 'saving' ? 'Saving your area and loading matching bookings.' : 'Please allow location access when your browser asks.' }}</p>
