@@ -9,8 +9,6 @@ const roleLabel = isProfessional ? 'Professional' : 'Customer'
 const query = ref('')
 const activeTopic = ref('all')
 const status = reactive({ state: 'checking', revision: '', checkedAt: null })
-const submittedReference = ref('')
-const form = reactive({ topic: '', reference: '', message: '' })
 
 const customerFaqs = [
   { topic: 'bookings', question: 'How does a booking work?', answer: 'Choose a service, confirm the address and schedule, then complete the payment step. Your request appears under My bookings while a matching professional accepts it.' },
@@ -18,7 +16,7 @@ const customerFaqs = [
   { topic: 'bookings', question: 'Can I cancel a booking?', answer: 'You can cancel a request from My bookings before a professional is assigned. Once a professional accepts the job, contact support so the assignment can be reviewed safely.' },
   { topic: 'account', question: 'How do I manage my service address?', answer: 'Open My profile from the account menu to update your phone number, address, city, state, and PIN code. Always check the address shown before confirming a booking.' },
   { topic: 'jobs', question: 'How can I contact my assigned professional?', answer: 'When a professional accepts your booking, their contact details and assignment information appear in My bookings. Use those details only for the active service request.' },
-  { topic: 'safety', question: 'How do I report a booking problem?', answer: 'Use the Contact support form below and include the booking number. For an immediate safety risk, move to a safe place and contact local emergency services first.' },
+  { topic: 'safety', question: 'How do I report a booking problem?', answer: 'Email or call support and include the booking number. For an immediate safety risk, move to a safe place and contact local emergency services first.' },
 ]
 
 const professionalFaqs = [
@@ -27,7 +25,7 @@ const professionalFaqs = [
   { topic: 'earnings', question: 'How are earnings and commission calculated?', answer: 'Your earnings page shows completed work week by week. Each entry separates the service amount, the platform commission, and your professional share.' },
   { topic: 'account', question: 'What is needed for profile approval?', answer: 'Your service, experience, contact details, and address help the operations team review your application. Keep these details accurate in My profile.' },
   { topic: 'jobs', question: 'When should I contact a customer?', answer: 'Use the phone number attached to an accepted job only for arrival, access, or service coordination. Do not use customer details after the job is complete.' },
-  { topic: 'payments', question: 'How do I report a job or payment issue?', answer: 'Send the job number and a concise description through the Contact support form. Do not mark an unfinished service as completed to resolve a payment issue.' },
+  { topic: 'payments', question: 'How do I report a job or payment issue?', answer: 'Email or call support with the job number and a concise description. Do not mark an unfinished service as completed to resolve a payment issue.' },
 ]
 
 const faqs = isProfessional ? professionalFaqs : customerFaqs
@@ -68,23 +66,6 @@ async function checkStatus() {
   }
 }
 
-function submitSupportRequest() {
-  const reference = `HS-${Date.now().toString(36).toUpperCase()}`
-  sessionStorage.setItem('homeserve_support_request', JSON.stringify({
-    reference,
-    role: user.role,
-    email: user.email,
-    ...form,
-    created_at: new Date().toISOString(),
-  }))
-  submittedReference.value = reference
-  Object.assign(form, { topic: '', reference: '', message: '' })
-}
-
-function startAnotherRequest() {
-  submittedReference.value = ''
-}
-
 onMounted(checkStatus)
 </script>
 
@@ -110,7 +91,7 @@ onMounted(checkStatus)
       </header>
 
       <nav class="support-jump-nav" aria-label="Support page sections">
-        <a href="#answers">FAQs</a><a href="#contact">Contact support</a><a href="#safety">Safety</a><a href="#policies">Policies</a><a href="#system">System status</a>
+        <a href="#answers">FAQs</a><a href="#contact">Email or call</a><a href="#safety">Safety</a><a href="#policies">Policies</a><a href="#system">System status</a>
       </nav>
 
       <section class="support-quick-actions" aria-label="Quick actions">
@@ -133,33 +114,30 @@ onMounted(checkStatus)
             <p>{{ item.answer }}</p>
           </details>
         </div>
-        <div v-else class="support-empty-search"><strong>No matching answers found.</strong><p>Try a different phrase or send us a support request below.</p><button type="button" @click="query = ''; activeTopic = 'all'">Show all answers</button></div>
+        <div v-else class="support-empty-search"><strong>No matching answers found.</strong><p>Try a different phrase, or email or call the support contacts below.</p><button type="button" @click="query = ''; activeTopic = 'all'">Show all answers</button></div>
       </section>
 
       <section id="contact" class="support-contact">
         <div class="support-contact__intro">
           <p class="workbench-label">CONTACT SUPPORT</p>
-          <h2>Tell us what<br />happened.</h2>
-          <p>Include the booking or job number when you have one. That helps the team understand the issue faster.</p>
+          <h2>Talk to<br />support.</h2>
+          <p>Choose email for a detailed issue or call when you need a quicker conversation. Include your booking or job number when you have one.</p>
           <dl><div><dt>Signed in as</dt><dd>{{ user.email || 'Your HomeServe account' }}</dd></div><div><dt>Support for</dt><dd>{{ roleLabel }} account</dd></div></dl>
         </div>
-        <div class="support-form-wrap">
-          <div v-if="submittedReference" class="support-form-success" role="status">
-            <span>✓</span><p class="workbench-label">REQUEST SAVED</p><h3>We have your details.</h3><p>Your reference is <strong>{{ submittedReference }}</strong>. This preview stores the request in this browser; connect a support backend before production.</p><button type="button" @click="startAnotherRequest">Send another request</button>
-          </div>
-          <form v-else class="support-form" @submit.prevent="submitSupportRequest">
-            <label>What do you need help with?<select v-model="form.topic" required><option value="" disabled>Select a topic</option><option>Booking or job issue</option><option>Payment or earnings</option><option>Account and profile</option><option>Location and address</option><option>Safety concern</option><option>Something else</option></select></label>
-            <label>Booking or job number <small>Optional</small><input v-model.trim="form.reference" maxlength="30" placeholder="For example, 1042" /></label>
-            <label class="support-form-wide">Describe the issue <small>{{ form.message.length }}/800</small><textarea v-model.trim="form.message" minlength="20" maxlength="800" rows="7" placeholder="Tell us what happened, what you expected, and any steps you already tried." required></textarea></label>
-            <p>Do not include passwords, card numbers, OTPs, or other sensitive information.</p>
-            <button type="submit">Send support request <span>→</span></button>
-          </form>
+        <div class="support-contact-options">
+          <a href="mailto:care@homeserve.example?subject=HomeServe%20support">
+            <span aria-hidden="true">@</span><div><small>EMAIL SUPPORT · DEMO</small><strong>care@homeserve.example</strong><p>Best for booking details, account questions, and payment concerns.</p></div><b>Open email ↗</b>
+          </a>
+          <a href="tel:+911800000000">
+            <span aria-hidden="true">☎</span><div><small>CALL SUPPORT · DEMO</small><strong>+91 1800 000 000</strong><p>Available Monday–Saturday, 9:00 AM–6:00 PM IST.</p></div><b>Call now ↗</b>
+          </a>
+          <p>These are placeholder contact details for the project demonstration. Do not share passwords, OTPs, or full payment-card details.</p>
         </div>
       </section>
 
       <section id="safety" class="support-safety">
         <div><span aria-hidden="true">!</span><p class="workbench-label">URGENT SAFETY GUIDANCE</p><h2>Your safety comes first.</h2></div>
-        <div><p>If you feel unsafe or there is an immediate risk to a person or property, move to a safe place and contact your local emergency services. Do not wait for an in-app response.</p><ul><li>Do not share an OTP, password, or full payment-card details.</li><li>Keep service communication related to the active booking.</li><li>Use the support form to document non-emergency safety concerns.</li></ul></div>
+        <div><p>If you feel unsafe or there is an immediate risk to a person or property, move to a safe place and contact your local emergency services. Do not wait for HomeServe support.</p><ul><li>Do not share an OTP, password, or full payment-card details.</li><li>Keep service communication related to the active booking.</li><li>Email or call support for non-emergency safety concerns.</li></ul></div>
       </section>
 
       <section id="policies" class="support-section policy-section">
