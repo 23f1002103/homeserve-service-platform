@@ -166,7 +166,7 @@ function detectCurrentLocation() {
         const response = await fetch('/api/customer/detect-service-area', {
           method: 'POST',
           headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ latitude, longitude }),
+          body: JSON.stringify({ latitude, longitude, accuracy: position.coords.accuracy }),
         })
         const data = await response.json()
         if (!response.ok) throw new Error(data.message || 'Could not verify your location')
@@ -365,7 +365,7 @@ onUnmounted(() => clearInterval(timerId))
           </div>
 
           <section v-if="locationMethod === 'gps'" class="booking-location-check" :class="{ 'is-verified': matchedServiceArea }">
-            <div><small>CURRENT SERVICE LOCATION</small><strong v-if="matchedServiceArea">{{ detectedLocation.city || matchedServiceArea.city }}, {{ detectedLocation.state || matchedServiceArea.state }}</strong><strong v-else>Verify where the service is needed</strong><p v-if="matchedServiceArea">Matched with the admin-approved {{ matchedServiceArea.city }} city.</p><p v-else>We use this only to check availability and give the professional map directions.</p></div>
+            <div><small>CURRENT SERVICE LOCATION</small><strong v-if="matchedServiceArea">{{ detectedLocation.city || matchedServiceArea.city }}, {{ detectedLocation.state || matchedServiceArea.state }}</strong><strong v-else>Verify where the service is needed</strong><p v-if="matchedServiceArea">Inside the admin-approved {{ matchedServiceArea.city }} service zone.</p><p v-else>We use this only to check availability and give the professional map directions.</p></div>
             <button type="button" :disabled="detectingLocation" @click="detectCurrentLocation">{{ detectingLocation ? 'Detecting…' : matchedServiceArea ? 'Detect again' : 'Use current location' }}</button>
           </section>
 
@@ -375,7 +375,7 @@ onUnmounted(() => clearInterval(timerId))
             <label>City<input v-model.trim="serviceCity" maxlength="100" :readonly="locationMethod === 'gps'" required /></label>
             <label>State<input v-model.trim="serviceState" maxlength="100" :readonly="locationMethod === 'gps'" required /></label>
           </div>
-          <label>{{ locationMethod === 'manual' ? 'Service address PIN code' : 'Detected PIN code' }}<input v-model.trim="servicePinCode" inputmode="numeric" maxlength="20" :readonly="locationMethod === 'gps'" /><small>Availability is checked using the city and state. The PIN code is retained for the exact service address.</small></label>
+          <label>{{ locationMethod === 'manual' ? 'Service address PIN code' : 'Detected PIN code' }}<input v-model.trim="servicePinCode" inputmode="numeric" maxlength="20" :readonly="locationMethod === 'gps'" /><small>GPS locations are checked against the administrator's service radius. The PIN code is retained for the exact address.</small></label>
 
           <section v-if="locationMethod === 'manual'" class="booking-location-check manual-location-check" :class="{ 'is-verified': matchedServiceArea }">
             <div><small>MANUAL SERVICE LOCATION</small><strong v-if="matchedServiceArea">Address verified for {{ matchedServiceArea.city }}</strong><strong v-else>Check service availability</strong><p v-if="matchedServiceArea">{{ matchedServiceArea.city }}, {{ matchedServiceArea.state }} is an admin-approved city.</p><p v-else>We will compare the city and state with the administrator's service areas.</p></div>

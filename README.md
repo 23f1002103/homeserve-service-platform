@@ -17,6 +17,7 @@ HomeServe is a full-stack household-service booking platform built as a final-ye
 - Register and log in using JWT authentication
 - Browse real services and prices managed by the administrator
 - Detect and validate a booking location against supported cities and states
+- Validate GPS locations against administrator-defined service radiuses
 - Book a manual-address service for yourself or another recipient
 - Create and cancel eligible bookings
 - Follow booking status from request through completion
@@ -29,6 +30,7 @@ HomeServe is a full-stack household-service booking platform built as a final-ye
 
 - Register for a service category and wait for administrator approval
 - Detect a GPS-based active work city at every approved professional login
+- Match the current GPS position to the same radius-based service zones used for customers
 - View matching available jobs
 - Accept one active job at a time
 - Update jobs through accepted and completed states
@@ -41,6 +43,7 @@ HomeServe is a full-stack household-service booking platform built as a final-ye
 - Review, approve, block, and unblock professionals
 - Manage services, descriptions, and prices
 - Manage supported cities inside a state-grouped service network
+- Search or click an interactive map to set each service area's centre and radius
 - View Top 5 city demand analytics
 - Monitor customers and service requests
 - View platform commission revenue

@@ -7,7 +7,12 @@ from flask_jwt_extended import get_jwt_identity
 
 from ..auth.decorators import roles_required
 from ..database import db
-from ..location import get_address_from_coordinates, location_matches_area
+from ..location import (
+    coordinates_match_area,
+    find_area_for_coordinates,
+    get_address_from_coordinates,
+    location_matches_area,
+)
 from ..models import Customer, Notification, Payment, Review, ServiceArea, ServiceRequest, ServiceType
 from ..reports import create_invoice_pdf
 from ..tasks import enqueue_task, send_booking_confirmation
@@ -16,11 +21,18 @@ from ..tasks import enqueue_task, send_booking_confirmation
 customer = Blueprint("customer", __name__)
 
 
-def find_service_area(location):
-    """Find an admin-approved area using normalized city and state."""
+def find_service_area(location, latitude=None, longitude=None):
+    """Find an area by GPS zone, falling back for legacy unconfigured cities."""
     areas = db.session.scalars(db.select(ServiceArea)).all()
+    if latitude is not None and longitude is not None:
+        matched_area = find_area_for_coordinates(latitude, longitude, areas)
+        if matched_area:
+            return matched_area, "radius"
     for area in areas:
-        if location_matches_area(location, area):
+        uses_legacy_fallback = (
+            latitude is None or longitude is None or not area.has_geo_zone
+        )
+        if uses_legacy_fallback and location_matches_area(location, area):
             return area, "city_state"
 
     return None, None
@@ -234,7 +246,7 @@ def detect_service_area():
     if location is None:
         return {"message": "Location lookup is temporarily unavailable"}, 503
 
-    matched_area, match_method = find_service_area(location)
+    matched_area, match_method = find_service_area(location, latitude, longitude)
     return {
         "detected_location": location,
         "matched_area": (
@@ -350,24 +362,6 @@ def create_booking():
     coordinates_provided = latitude is not None or longitude is not None
     if coordinates_provided and (latitude is None or longitude is None):
         return {"message": "Both latitude and longitude are required"}, 400
-
-    service_area = None
-    if isinstance(service_area_id, int):
-        service_area = db.session.get(ServiceArea, service_area_id)
-        if service_area is not None and not location_matches_area(
-            {"city": service_city, "state": service_state}, service_area
-        ):
-            service_area = None
-    if service_area is None:
-        service_area, _ = find_service_area(
-            {
-                "city": service_city,
-                "state": service_state,
-                "pin_code": service_pin_code,
-            }
-        )
-    if service_area is None:
-        return {"message": "HomeServe is not available at this location"}, 400
     if latitude is not None and (
         not isinstance(latitude, (int, float)) or not -90 <= latitude <= 90
     ):
@@ -376,6 +370,30 @@ def create_booking():
         not isinstance(longitude, (int, float)) or not -180 <= longitude <= 180
     ):
         return {"message": "A valid longitude is required"}, 400
+
+    service_area = None
+    if isinstance(service_area_id, int):
+        service_area = db.session.get(ServiceArea, service_area_id)
+        if service_area is not None:
+            if coordinates_provided and service_area.has_geo_zone:
+                if not coordinates_match_area(latitude, longitude, service_area):
+                    service_area = None
+            elif not location_matches_area(
+                {"city": service_city, "state": service_state}, service_area
+            ):
+                service_area = None
+    if service_area is None:
+        service_area, _ = find_service_area(
+            {
+                "city": service_city,
+                "state": service_state,
+                "pin_code": service_pin_code,
+            },
+            latitude,
+            longitude,
+        )
+    if service_area is None:
+        return {"message": "HomeServe is not available at this location"}, 400
     if not service_type.pricing:
         return {"message": "This service does not have a price yet"}, 400
 

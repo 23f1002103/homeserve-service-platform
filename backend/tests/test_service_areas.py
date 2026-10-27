@@ -52,6 +52,40 @@ class ServiceAreaTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.get_json()["service_area"]["pin_code"], "")
 
+    def test_admin_can_create_a_radius_based_service_zone(self):
+        response = self.client.post(
+            "/api/admin/service-areas",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            json={
+                "city": "Kolkata",
+                "state": "West Bengal",
+                "center_latitude": 22.5726,
+                "center_longitude": 88.3639,
+                "radius_km": 30,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        area = response.get_json()["service_area"]
+        self.assertTrue(area["has_geo_zone"])
+        self.assertEqual(area["radius_km"], 30.0)
+
+    def test_admin_cannot_create_an_invalid_service_radius(self):
+        response = self.client.post(
+            "/api/admin/service-areas",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            json={
+                "city": "Kolkata",
+                "state": "West Bengal",
+                "center_latitude": 22.5726,
+                "center_longitude": 88.3639,
+                "radius_km": 250,
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("between 1 and 100", response.get_json()["message"])
+
     def test_admin_cannot_delete_area_used_by_professional(self):
         with self.app.app_context():
             user = User(

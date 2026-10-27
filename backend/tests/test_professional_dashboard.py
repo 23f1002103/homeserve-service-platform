@@ -184,6 +184,38 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             self.assertEqual(professional.active_service_area_id, area_id)
             self.assertIsNotNone(professional.location_verified_at)
 
+    @patch("app.professional.routes.get_address_from_coordinates")
+    def test_professional_gps_uses_radius_when_city_name_is_different(self, reverse_lookup):
+        with self.app.app_context():
+            professional = db.session.scalar(db.select(Professional))
+            professional.approval_status = "approved"
+            area = ServiceArea(
+                city="Kolkata",
+                state="West Bengal",
+                pin_code="700001",
+                center_latitude=22.5726,
+                center_longitude=88.3639,
+                radius_km=30,
+            )
+            db.session.add(area)
+            db.session.commit()
+            area_id = area.id
+
+        reverse_lookup.return_value = {
+            "city": "Howrah",
+            "state": "West Bengal",
+            "pin_code": "711101",
+            "full_address": "Howrah, West Bengal",
+        }
+        response = self.client.post(
+            "/api/professional/detect-service-area",
+            headers={"Authorization": f"Bearer {self.professional_token}"},
+            json={"latitude": 22.5958, "longitude": 88.2636},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["matched_area"]["id"], area_id)
+
     def test_approved_professional_can_see_and_accept_matching_job(self):
         with self.app.app_context():
             professional = db.session.scalar(db.select(Professional))

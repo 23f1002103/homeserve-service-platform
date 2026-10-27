@@ -237,6 +237,16 @@ class ServiceArea(db.Model):
     city = db.Column(db.String(100), nullable=False)
     state = db.Column(db.String(100), nullable=False)
     pin_code = db.Column(db.String(20), nullable=False)
+    center_latitude = db.Column(db.Float, nullable=True)
+    center_longitude = db.Column(db.Float, nullable=True)
+    radius_km = db.Column(db.Float, nullable=True)
+
+    @property
+    def has_geo_zone(self):
+        return all(
+            value is not None
+            for value in (self.center_latitude, self.center_longitude, self.radius_km)
+        )
 
     active_professionals = db.relationship(
         "Professional",

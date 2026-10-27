@@ -627,13 +627,30 @@
 .area-city-workspace > header { display: flex; gap: 25px; align-items: end; justify-content: space-between; padding-bottom: 27px; border-bottom: 1px solid #bcc3bd; }
 .area-city-workspace > header h2 { margin: 6px 0; font: 500 clamp(2rem, 4vw, 3.5rem)/1 Georgia, serif; }
 .area-city-workspace > header p:last-child { margin: 0; color: #6d7972; font-size: 0.76rem; }
-.area-city-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; padding: 30px 0; border-bottom: 1px solid #c5cbc6; }
+.area-city-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: end; padding: 30px 0; border-bottom: 1px solid #c5cbc6; }
 .area-city-form label { display: grid; gap: 7px; color: #425149; font-size: 0.7rem; font-weight: 850; }
 .area-city-form input { width: 100%; padding: 12px; border: 1px solid #afb8b1; background: #fff; font: inherit; }
 .area-form-context { display: grid; min-height: 62px; padding: 11px 14px; align-content: center; border-left: 4px solid #a55232; background: #ebe9e2; }
 .area-form-context small { color: #7b837e; font-size: 0.56rem; font-weight: 850; letter-spacing: 0.12em; }
 .area-form-context strong { margin-top: 3px; font: 500 1.2rem Georgia, serif; }
 .area-city-form .service-form-actions { grid-auto-flow: column; }
+.area-zone-editor { grid-column: 1 / -1; display: grid; grid-template-columns: 0.72fr 1.28fr; min-height: 430px; margin-top: 12px; border: 1px solid #aeb7b0; background: #f1eee6; }
+.area-zone-controls { display: grid; gap: 22px; align-content: start; padding: 28px; border-right: 1px solid #aeb7b0; }
+.area-zone-controls h3 { margin: 5px 0 9px; font: 500 1.8rem/1 Georgia, serif; }
+.area-zone-controls > div > p:last-child { margin: 0; color: #6b756f; font-size: 0.72rem; line-height: 1.55; }
+.area-place-search > div { display: flex; }
+.area-place-search input { min-width: 0; }
+.area-place-search button { padding: 0 14px; border: 0; color: #fff; background: #2c5144; font-size: 0.68rem; font-weight: 850; }
+.area-place-search button:disabled { cursor: wait; opacity: 0.6; }
+.area-zone-controls label > strong { justify-self: end; margin-top: -22px; color: #a55232; }
+.area-zone-controls input[type='range'] { padding: 0; accent-color: #a55232; }
+.area-zone-controls dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.area-zone-controls dl div { display: grid; gap: 5px; padding: 11px; border: 1px solid #c4cac4; background: #faf8f2; }
+.area-zone-controls dt { color: #748078; font-size: 0.62rem; }
+.area-zone-controls dd { margin: 0; font: 0.7rem ui-monospace, monospace; }
+.area-zone-map { z-index: 1; min-height: 430px; background: #dfe5df; }
+.area-zone-map .leaflet-control-attribution { font-size: 10px; }
+.area-city-form > .service-form-actions { grid-column: 1 / -1; justify-content: start; }
 .area-city-list { padding-top: 25px; }
 .area-city-list-tools { display: flex; gap: 18px; align-items: center; margin-bottom: 14px; }
 .area-city-list-tools .list-search { flex: 1; }
@@ -1392,6 +1409,9 @@
 .support-system footer { display: flex; justify-content: space-between; padding-top: 20px; color: #83988d; font: 0.61rem ui-monospace, monospace; }
 
 @media (max-width: 850px) {
+  .area-zone-editor { grid-template-columns: 1fr; }
+  .area-zone-controls { border-right: 0; border-bottom: 1px solid #aeb7b0; }
+  .area-zone-map { min-height: 360px; }
   .support-hero,
   .support-section__heading,
   .support-contact,
@@ -1408,6 +1428,9 @@
 }
 
 @media (max-width: 560px) {
+  .area-zone-controls { padding: 22px; }
+  .area-zone-controls dl { grid-template-columns: 1fr; }
+  .area-zone-map { min-height: 300px; }
   .support-hero h1 { font-size: 3.7rem; }
   .support-quick-actions { margin: 35px 0 80px; }
   .support-section { padding-bottom: 80px; }

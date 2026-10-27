@@ -7,7 +7,7 @@ from flask import Blueprint, Response, request
 
 from ..auth.decorators import roles_required
 from ..database import db
-from ..location import normalize_city_name, normalize_state_name
+from ..location import normalize_city_name, normalize_state_name, search_place
 from ..models import (
     Customer,
     Professional,
@@ -28,6 +28,52 @@ def same_city_area(area, city, state):
         normalize_city_name(area.city) == normalize_city_name(city)
         and normalize_state_name(area.state) == normalize_state_name(state)
     )
+
+
+def parse_geo_zone(data, current_area=None):
+    latitude = data.get("center_latitude")
+    longitude = data.get("center_longitude")
+    radius = data.get("radius_km")
+    values = (latitude, longitude, radius)
+    if all(value in (None, "") for value in values):
+        if current_area is not None:
+            return (
+                current_area.center_latitude,
+                current_area.center_longitude,
+                current_area.radius_km,
+                None,
+            )
+        return None, None, None, None
+    if any(value in (None, "") for value in values):
+        return None, None, None, "Map centre and radius must be provided together"
+    try:
+        latitude, longitude, radius = map(float, values)
+    except (TypeError, ValueError):
+        return None, None, None, "Map centre and radius must be valid numbers"
+    if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
+        return None, None, None, "Map coordinates are outside the valid range"
+    if not 1 <= radius <= 100:
+        return None, None, None, "Service radius must be between 1 and 100 km"
+    return latitude, longitude, radius, None
+
+
+def serialize_service_area(area, include_counts=False):
+    result = {
+        "id": area.id,
+        "city": area.city,
+        "state": area.state,
+        "pin_code": area.pin_code,
+        "center_latitude": area.center_latitude,
+        "center_longitude": area.center_longitude,
+        "radius_km": area.radius_km,
+        "has_geo_zone": area.has_geo_zone,
+    }
+    if include_counts:
+        result.update(
+            professional_count=len(area.active_professionals),
+            demand_count=len(area.service_requests),
+        )
+    return result
 
 
 def professional_rating(professional_id):
@@ -488,14 +534,7 @@ def service_areas():
 
     return {
         "service_areas": [
-            {
-                "id": area.id,
-                "city": area.city,
-                "state": area.state,
-                "pin_code": area.pin_code,
-                "professional_count": len(area.active_professionals),
-                "demand_count": len(area.service_requests),
-            }
+            serialize_service_area(area, include_counts=True)
             for area in area_list
         ]
     }, 200
@@ -508,9 +547,12 @@ def create_service_area():
     city = (data.get("city") or "").strip()
     state = (data.get("state") or "").strip()
     pin_code = (data.get("pin_code") or "").strip()
+    latitude, longitude, radius, zone_error = parse_geo_zone(data)
 
     if not city or not state:
         return {"message": "City and state are required"}, 400
+    if zone_error:
+        return {"message": zone_error}, 400
 
     existing_area = next(
         (
@@ -523,18 +565,20 @@ def create_service_area():
     if existing_area is not None:
         return {"message": "This city and state are already a service area"}, 409
 
-    area = ServiceArea(city=city, state=state, pin_code=pin_code)
+    area = ServiceArea(
+        city=city,
+        state=state,
+        pin_code=pin_code,
+        center_latitude=latitude,
+        center_longitude=longitude,
+        radius_km=radius,
+    )
     db.session.add(area)
     db.session.commit()
 
     return {
         "message": "Service area created successfully",
-        "service_area": {
-            "id": area.id,
-            "city": area.city,
-            "state": area.state,
-            "pin_code": area.pin_code,
-        },
+        "service_area": serialize_service_area(area),
     }, 201
 
 
@@ -549,9 +593,12 @@ def update_service_area(area_id):
     city = (data.get("city") or "").strip()
     state = (data.get("state") or "").strip()
     pin_code = (data.get("pin_code") or area.pin_code or "").strip()
+    latitude, longitude, radius, zone_error = parse_geo_zone(data, area)
 
     if not city or not state:
         return {"message": "City and state are required"}, 400
+    if zone_error:
+        return {"message": zone_error}, 400
 
     existing_area = next(
         (
@@ -567,17 +614,27 @@ def update_service_area(area_id):
     area.city = city
     area.state = state
     area.pin_code = pin_code
+    area.center_latitude = latitude
+    area.center_longitude = longitude
+    area.radius_km = radius
     db.session.commit()
 
     return {
         "message": "Service area updated successfully",
-        "service_area": {
-            "id": area.id,
-            "city": area.city,
-            "state": area.state,
-            "pin_code": area.pin_code,
-        },
+        "service_area": serialize_service_area(area),
     }, 200
+
+
+@admin.get("/location-search")
+@roles_required("admin")
+def location_search():
+    query = (request.args.get("q") or "").strip()
+    if len(query) < 2:
+        return {"message": "Enter at least two characters to search"}, 400
+    result = search_place(query)
+    if result is None:
+        return {"message": "No matching place was found"}, 404
+    return {"location": result}, 200
 
 
 @admin.delete("/service-areas/<int:area_id>")

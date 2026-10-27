@@ -33,6 +33,7 @@ function detectLocation() {
           body: JSON.stringify({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
           }),
         })
         const data = await response.json()
@@ -58,7 +59,7 @@ function detectLocation() {
         ? 'Location permission is required to find bookings in your area.'
         : 'Your current location could not be found. Please try again.'
     },
-    { enableHighAccuracy: false, timeout: 10000 },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
   )
 }
 

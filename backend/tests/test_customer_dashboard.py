@@ -348,6 +348,32 @@ class CustomerDashboardTestCase(unittest.TestCase):
         self.assertEqual(recipient["name"], "Customer Parent")
         self.assertEqual(recipient["phone_number"], "9988776655")
 
+    @patch("app.customer.routes.get_address_from_coordinates")
+    def test_customer_gps_uses_radius_when_city_name_is_different(self, reverse_lookup):
+        with self.app.app_context():
+            area = db.session.scalar(db.select(ServiceArea))
+            area.center_latitude = 22.5726
+            area.center_longitude = 88.3639
+            area.radius_km = 30
+            db.session.commit()
+            area_id = area.id
+
+        reverse_lookup.return_value = {
+            "city": "Howrah",
+            "state": "West Bengal",
+            "pin_code": "711101",
+            "full_address": "Howrah, West Bengal",
+        }
+        response = self.client.post(
+            "/api/customer/detect-service-area",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={"latitude": 22.5958, "longitude": 88.2636},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["matched_area"]["id"], area_id)
+        self.assertEqual(response.get_json()["match_method"], "radius")
+
     def test_booking_for_other_requires_recipient_contact(self):
         with self.app.app_context():
             service_id = db.session.scalar(db.select(ServiceType.id))

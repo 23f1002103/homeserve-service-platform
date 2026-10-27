@@ -6,7 +6,11 @@ from flask_jwt_extended import get_jwt_identity
 
 from ..auth.decorators import roles_required
 from ..database import db
-from ..location import get_address_from_coordinates, location_matches_area
+from ..location import (
+    find_area_for_coordinates,
+    get_address_from_coordinates,
+    location_matches_area,
+)
 from ..models import (
     Notification,
     Professional,
@@ -543,14 +547,17 @@ def detect_service_area():
     if location is None:
         return {"message": "Location lookup is temporarily unavailable"}, 503
 
-    matched_area = next(
-        (
-            area
-            for area in db.session.scalars(db.select(ServiceArea)).all()
-            if location_matches_area(location, area)
-        ),
-        None,
-    )
+    areas = db.session.scalars(db.select(ServiceArea)).all()
+    matched_area = find_area_for_coordinates(latitude, longitude, areas)
+    if matched_area is None:
+        matched_area = next(
+            (
+                area
+                for area in areas
+                if not area.has_geo_zone and location_matches_area(location, area)
+            ),
+            None,
+        )
 
     profile.active_service_area = matched_area
     profile.location_verified_at = datetime.now() if matched_area else None

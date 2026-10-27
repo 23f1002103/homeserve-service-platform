@@ -1,6 +1,8 @@
 """Small helper for converting map coordinates into an address."""
 
 import json
+import math
+from functools import lru_cache
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -33,6 +35,34 @@ def location_matches_area(location, area):
         and normalize_state_name(location.get("state"))
         == normalize_state_name(area.state)
     )
+
+
+def coordinates_match_area(latitude, longitude, area):
+    """Return whether coordinates fall inside an area's configured circle."""
+    if not area.has_geo_zone:
+        return False
+
+    earth_radius_km = 6371.0088
+    lat_1 = math.radians(latitude)
+    lat_2 = math.radians(area.center_latitude)
+    latitude_delta = math.radians(area.center_latitude - latitude)
+    longitude_delta = math.radians(area.center_longitude - longitude)
+    haversine = (
+        math.sin(latitude_delta / 2) ** 2
+        + math.cos(lat_1)
+        * math.cos(lat_2)
+        * math.sin(longitude_delta / 2) ** 2
+    )
+    distance_km = 2 * earth_radius_km * math.asin(math.sqrt(haversine))
+    return distance_km <= area.radius_km
+
+
+def find_area_for_coordinates(latitude, longitude, areas):
+    """Choose the smallest configured zone containing the coordinate."""
+    matches = [
+        area for area in areas if coordinates_match_area(latitude, longitude, area)
+    ]
+    return min(matches, key=lambda area: area.radius_km) if matches else None
 
 
 def _request_json(url):
@@ -79,6 +109,51 @@ def _nominatim_address(latitude, longitude):
         "state": (address.get("state") or "").strip(),
         "pin_code": (address.get("postcode") or "").strip(),
         "full_address": (result.get("display_name") or "").strip(),
+    }
+
+
+@lru_cache(maxsize=128)
+def search_place(query):
+    """Find one Indian place for the admin's explicit map search."""
+    normalized_query = (query or "").strip()
+    if len(normalized_query) < 2:
+        return None
+
+    parameters = urlencode(
+        {
+            "q": normalized_query,
+            "format": "jsonv2",
+            "addressdetails": 1,
+            "limit": 1,
+            "countrycodes": "in",
+        }
+    )
+    results = _request_json(f"https://nominatim.openstreetmap.org/search?{parameters}")
+    if not isinstance(results, list) or not results:
+        return None
+
+    result = results[0]
+    address = result.get("address", {})
+    try:
+        latitude = float(result["lat"])
+        longitude = float(result["lon"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    city = (
+        address.get("city")
+        or address.get("town")
+        or address.get("municipality")
+        or address.get("village")
+        or address.get("county")
+        or ""
+    )
+    return {
+        "latitude": latitude,
+        "longitude": longitude,
+        "city": city.strip(),
+        "state": (address.get("state") or "").strip(),
+        "display_name": (result.get("display_name") or normalized_query).strip(),
     }
 
 

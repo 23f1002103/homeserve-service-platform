@@ -1,9 +1,10 @@
 import json
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from urllib.error import URLError
 
-from app.location import get_address_from_coordinates
+from app.location import coordinates_match_area, get_address_from_coordinates
 
 
 def json_response(payload):
@@ -13,6 +14,18 @@ def json_response(payload):
 
 
 class LocationTestCase(unittest.TestCase):
+    def test_coordinates_are_checked_against_area_radius(self):
+        area = SimpleNamespace(
+            has_geo_zone=True,
+            center_latitude=22.5726,
+            center_longitude=88.3639,
+            radius_km=25,
+        )
+
+        self.assertTrue(coordinates_match_area(22.5726, 88.3639, area))
+        self.assertTrue(coordinates_match_area(22.6520, 88.4490, area))
+        self.assertFalse(coordinates_match_area(23.2599, 87.8619, area))
+
     @patch("app.location.urlopen")
     def test_uses_nominatim_result_when_available(self, urlopen):
         urlopen.return_value = json_response(
