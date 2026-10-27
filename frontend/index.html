@@ -10,7 +10,24 @@
     <title>HomeServe</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div class="app-boot-loader" role="status" aria-label="Loading HomeServe">
+        <div class="app-boot-loader__mark"><span>HS</span><i></i><i></i></div>
+        <strong>HomeServe</strong>
+        <p>Preparing care for your home…</p>
+      </div>
+    </div>
+    <style>
+      .app-boot-loader { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; color: #17362c; background: #f5f0e5; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+      .app-boot-loader__mark { position: relative; display: grid; width: 92px; height: 92px; margin-bottom: 25px; place-items: center; }
+      .app-boot-loader__mark span { position: relative; z-index: 2; display: grid; width: 54px; height: 54px; place-items: center; border-radius: 50%; color: #f5f0e5; background: #0f5942; font-family: Georgia, serif; font-size: 14px; }
+      .app-boot-loader__mark i { position: absolute; inset: 0; border: 1px solid rgba(15, 89, 66, .28); border-radius: 50%; animation: homeserve-boot 1.8s ease-out infinite; }
+      .app-boot-loader__mark i:last-child { animation-delay: .6s; }
+      .app-boot-loader > strong { font-family: Georgia, serif; font-size: 29px; font-weight: 500; }
+      .app-boot-loader > p { margin: 9px 0 0; color: #68756e; font-size: 13px; }
+      @keyframes homeserve-boot { 0% { opacity: .9; transform: scale(.55); } 100% { opacity: 0; transform: scale(1.15); } }
+      @media (prefers-reduced-motion: reduce) { .app-boot-loader__mark i { animation: none; } }
+    </style>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
