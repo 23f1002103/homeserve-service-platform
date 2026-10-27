@@ -547,7 +547,9 @@ def detect_service_area():
     if location is None:
         return {"message": "Location lookup is temporarily unavailable"}, 503
 
-    areas = db.session.scalars(db.select(ServiceArea)).all()
+    areas = db.session.scalars(
+        db.select(ServiceArea).where(ServiceArea.is_active.is_(True))
+    ).all()
     matched_area = find_area_for_coordinates(latitude, longitude, areas)
     if matched_area is None:
         matched_area = next(

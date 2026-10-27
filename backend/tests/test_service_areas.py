@@ -86,6 +86,30 @@ class ServiceAreaTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("between 1 and 100", response.get_json()["message"])
 
+    def test_admin_can_deactivate_and_reactivate_an_area(self):
+        with self.app.app_context():
+            area = ServiceArea(city="Kolkata", state="West Bengal", pin_code="700001")
+            db.session.add(area)
+            db.session.commit()
+            area_id = area.id
+
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        deactivated = self.client.patch(
+            f"/api/admin/service-areas/{area_id}/availability",
+            headers=headers,
+            json={"is_active": False},
+        )
+        reactivated = self.client.patch(
+            f"/api/admin/service-areas/{area_id}/availability",
+            headers=headers,
+            json={"is_active": True},
+        )
+
+        self.assertEqual(deactivated.status_code, 200)
+        self.assertFalse(deactivated.get_json()["service_area"]["is_active"])
+        self.assertEqual(reactivated.status_code, 200)
+        self.assertTrue(reactivated.get_json()["service_area"]["is_active"])
+
     def test_admin_cannot_delete_area_used_by_professional(self):
         with self.app.app_context():
             user = User(

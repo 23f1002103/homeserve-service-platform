@@ -22,9 +22,11 @@ const successMessage = ref('')
 const creating = ref(false)
 const editingAreaId = ref(null)
 const deletingAreaId = ref(null)
+const availabilityBusyId = ref(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const pendingDeleteArea = ref(null)
+const pendingAvailabilityArea = ref(null)
 const pageSize = 7
 let map
 let centerMarker
@@ -252,6 +254,30 @@ async function deleteArea(area) {
   }
 }
 
+async function updateAvailability(area) {
+  errorMessage.value = ''
+  successMessage.value = ''
+  availabilityBusyId.value = area.id
+  const nextActiveState = !area.is_active
+  try {
+    const response = await fetch(`/api/admin/service-areas/${area.id}/availability`, {
+      method: 'PATCH',
+      headers: authHeaders(true),
+      body: JSON.stringify({ is_active: nextActiveState }),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.message || 'Could not update this city')
+    successMessage.value = data.message
+    await loadAreas(area.state)
+    state.value = selectedState.value
+  } catch (error) {
+    errorMessage.value = error.message
+  } finally {
+    availabilityBusyId.value = null
+    pendingAvailabilityArea.value = null
+  }
+}
+
 onMounted(async () => {
   await nextTick()
   initializeMap()
@@ -306,13 +332,14 @@ onUnmounted(() => { map?.remove(); map = null })
 
           <div v-if="activeGroup && !addingNewState" class="area-city-list">
             <div class="area-city-list-tools"><label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search cities in this state" aria-label="Search cities" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label><span>{{ filteredCities.length }} result{{ filteredCities.length === 1 ? '' : 's' }}</span></div>
-            <article v-for="area in visibleCities" :key="area.id"><div><strong>{{ area.city }}</strong><small>{{ area.professional_count }} active professional(s) · {{ area.demand_count }} booking(s) · {{ area.has_geo_zone ? `${area.radius_km} km GPS zone` : 'GPS zone not set' }}</small></div><div><button type="button" @click="editArea(area)">Edit</button><button type="button" class="area-delete-button" :disabled="deletingAreaId === area.id" @click="pendingDeleteArea = area">{{ deletingAreaId === area.id ? 'Deleting…' : 'Delete' }}</button></div></article>
+            <article v-for="area in visibleCities" :key="area.id" :class="{ 'is-inactive': !area.is_active }"><div><span class="area-status" :class="area.is_active ? 'is-active' : 'is-paused'">{{ area.is_active ? 'Active' : 'Inactive' }}</span><strong>{{ area.city }}</strong><small>{{ area.professional_count }} connected professional(s) · {{ area.demand_count }} booking(s) · {{ area.has_geo_zone ? `${area.radius_km} km GPS zone` : 'GPS zone not set' }}</small></div><div><button type="button" @click="editArea(area)">Edit</button><button type="button" class="area-availability-button" :disabled="availabilityBusyId === area.id" @click="pendingAvailabilityArea = area">{{ area.is_active ? 'Deactivate' : 'Activate' }}</button><button v-if="area.can_delete" type="button" class="area-delete-button" :disabled="deletingAreaId === area.id" @click="pendingDeleteArea = area">{{ deletingAreaId === area.id ? 'Deleting…' : 'Delete permanently' }}</button></div></article>
             <p v-if="!filteredCities.length">No cities match this search.</p>
             <nav v-if="pageCount > 1" class="area-pagination" aria-label="City pages"><button type="button" :disabled="currentPage === 1" @click="currentPage--">Previous</button><span>{{ currentPage }} / {{ pageCount }}</span><button type="button" :disabled="currentPage === pageCount" @click="currentPage++">Next</button></nav>
           </div>
         </div>
       </section>
     </main>
-    <ConfirmActionModal :open="Boolean(pendingDeleteArea)" eyebrow="Service network" :title="`Remove ${pendingDeleteArea?.city || 'this city'}?`" :description="`${pendingDeleteArea?.city || 'This city'} can be removed only when no bookings or active professionals use it.`" confirm-label="Remove city" :busy="deletingAreaId === pendingDeleteArea?.id" danger @confirm="deleteArea(pendingDeleteArea)" @cancel="pendingDeleteArea = null" />
+    <ConfirmActionModal :open="Boolean(pendingAvailabilityArea)" eyebrow="Service availability" :title="`${pendingAvailabilityArea?.is_active ? 'Deactivate' : 'Activate'} ${pendingAvailabilityArea?.city || 'this city'}?`" :description="pendingAvailabilityArea?.is_active ? 'New customer and professional GPS matches will stop here. Existing bookings and history will remain safely stored.' : 'Customers and professionals inside this service zone will be able to match again.'" :confirm-label="pendingAvailabilityArea?.is_active ? 'Deactivate city' : 'Activate city'" :busy="availabilityBusyId === pendingAvailabilityArea?.id" :danger="pendingAvailabilityArea?.is_active" @confirm="updateAvailability(pendingAvailabilityArea)" @cancel="pendingAvailabilityArea = null" />
+    <ConfirmActionModal :open="Boolean(pendingDeleteArea)" eyebrow="Permanent deletion" :title="`Delete ${pendingDeleteArea?.city || 'this city'} permanently?`" description="This city has no bookings or connected professionals. Permanent deletion cannot be undone." confirm-label="Delete permanently" :busy="deletingAreaId === pendingDeleteArea?.id" danger @confirm="deleteArea(pendingDeleteArea)" @cancel="pendingDeleteArea = null" />
   </div>
 </template>

@@ -23,7 +23,9 @@ customer = Blueprint("customer", __name__)
 
 def find_service_area(location, latitude=None, longitude=None):
     """Find an area by GPS zone, falling back for legacy unconfigured cities."""
-    areas = db.session.scalars(db.select(ServiceArea)).all()
+    areas = db.session.scalars(
+        db.select(ServiceArea).where(ServiceArea.is_active.is_(True))
+    ).all()
     if latitude is not None and longitude is not None:
         matched_area = find_area_for_coordinates(latitude, longitude, areas)
         if matched_area:
@@ -375,7 +377,9 @@ def create_booking():
     if isinstance(service_area_id, int):
         service_area = db.session.get(ServiceArea, service_area_id)
         if service_area is not None:
-            if coordinates_provided and service_area.has_geo_zone:
+            if not service_area.is_active:
+                service_area = None
+            elif coordinates_provided and service_area.has_geo_zone:
                 if not coordinates_match_area(latitude, longitude, service_area):
                     service_area = None
             elif not location_matches_area(

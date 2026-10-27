@@ -657,10 +657,15 @@
 .area-city-list-tools > span { color: #727e77; font: 0.63rem ui-monospace, monospace; white-space: nowrap; }
 .area-city-list > article { display: flex; gap: 20px; align-items: center; justify-content: space-between; min-height: 78px; border-bottom: 1px solid #c2c8c3; }
 .area-city-list article > div:first-child { display: grid; gap: 5px; }
+.area-city-list > article.is-inactive { opacity: 0.72; }
+.area-status { justify-self: start; padding: 4px 8px; border: 1px solid #8c9a92; border-radius: 999px; font-size: 0.58rem; font-weight: 850; letter-spacing: 0.06em; text-transform: uppercase; }
+.area-status.is-active { color: #245d43; border-color: #82a994; background: #e5efe9; }
+.area-status.is-paused { color: #735f55; border-color: #b5a69e; background: #eee9e5; }
 .area-city-list article strong { font: 500 1.15rem Georgia, serif; }
 .area-city-list article small { color: #727e77; font-size: 0.66rem; }
 .area-city-list article > div:last-child { display: flex; gap: 8px; }
 .area-city-list article button { padding: 8px 10px; border: 1px solid #77877f; color: #30473d; background: transparent; font-size: 0.68rem; font-weight: 800; }
+.area-city-list .area-availability-button { color: #77502f; border-color: #b99779; }
 .area-row-actions .area-edit-button { border: 1px solid #789083; color: #294f42; }
 .area-row-actions .area-delete-button { border: 1px solid #bd8e80; color: #923f2b; }
 .area-row-actions button:disabled { cursor: wait; opacity: 0.55; }

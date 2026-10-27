@@ -240,6 +240,7 @@ class ServiceArea(db.Model):
     center_latitude = db.Column(db.Float, nullable=True)
     center_longitude = db.Column(db.Float, nullable=True)
     radius_km = db.Column(db.Float, nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     @property
     def has_geo_zone(self):

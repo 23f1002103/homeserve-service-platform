@@ -216,6 +216,38 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["matched_area"]["id"], area_id)
 
+    @patch("app.professional.routes.get_address_from_coordinates")
+    def test_professional_gps_ignores_a_deactivated_area(self, reverse_lookup):
+        with self.app.app_context():
+            professional = db.session.scalar(db.select(Professional))
+            professional.approval_status = "approved"
+            area = ServiceArea(
+                city="Kolkata",
+                state="West Bengal",
+                pin_code="700001",
+                center_latitude=22.5726,
+                center_longitude=88.3639,
+                radius_km=30,
+                is_active=False,
+            )
+            db.session.add(area)
+            db.session.commit()
+
+        reverse_lookup.return_value = {
+            "city": "Kolkata",
+            "state": "West Bengal",
+            "pin_code": "700001",
+            "full_address": "Kolkata, West Bengal",
+        }
+        response = self.client.post(
+            "/api/professional/detect-service-area",
+            headers={"Authorization": f"Bearer {self.professional_token}"},
+            json={"latitude": 22.5726, "longitude": 88.3639},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.get_json()["matched_area"])
+
     def test_approved_professional_can_see_and_accept_matching_job(self):
         with self.app.app_context():
             professional = db.session.scalar(db.select(Professional))

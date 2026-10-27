@@ -67,11 +67,13 @@ def serialize_service_area(area, include_counts=False):
         "center_longitude": area.center_longitude,
         "radius_km": area.radius_km,
         "has_geo_zone": area.has_geo_zone,
+        "is_active": area.is_active,
     }
     if include_counts:
         result.update(
             professional_count=len(area.active_professionals),
             demand_count=len(area.service_requests),
+            can_delete=not area.active_professionals and not area.service_requests,
         )
     return result
 
@@ -637,6 +639,26 @@ def location_search():
     return {"location": result}, 200
 
 
+@admin.patch("/service-areas/<int:area_id>/availability")
+@roles_required("admin")
+def update_service_area_availability(area_id):
+    area = db.session.get(ServiceArea, area_id)
+    if area is None:
+        return {"message": "Service area not found"}, 404
+
+    is_active = (request.get_json(silent=True) or {}).get("is_active")
+    if not isinstance(is_active, bool):
+        return {"message": "Availability must be true or false"}, 400
+
+    area.is_active = is_active
+    db.session.commit()
+    action = "activated" if is_active else "deactivated"
+    return {
+        "message": f"{area.city} was {action} successfully",
+        "service_area": serialize_service_area(area),
+    }, 200
+
+
 @admin.delete("/service-areas/<int:area_id>")
 @roles_required("admin")
 def delete_service_area(area_id):
@@ -646,11 +668,11 @@ def delete_service_area(area_id):
 
     if area.active_professionals:
         return {
-            "message": "This area cannot be deleted while a professional is active there"
+            "message": "Deactivate this area instead; a professional is connected to it"
         }, 409
     if area.service_requests:
         return {
-            "message": "This area cannot be deleted because bookings use it"
+            "message": "Deactivate this area instead; its booking history must be retained"
         }, 409
 
     db.session.delete(area)

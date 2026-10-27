@@ -44,6 +44,7 @@ HomeServe is a full-stack household-service booking platform built as a final-ye
 - Manage services, descriptions, and prices
 - Manage supported cities inside a state-grouped service network
 - Search or click an interactive map to set each service area's centre and radius
+- Deactivate service areas without deleting booking history, and permanently delete only unused areas
 - View Top 5 city demand analytics
 - Monitor customers and service requests
 - View platform commission revenue

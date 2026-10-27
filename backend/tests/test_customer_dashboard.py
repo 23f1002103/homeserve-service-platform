@@ -374,6 +374,31 @@ class CustomerDashboardTestCase(unittest.TestCase):
         self.assertEqual(response.get_json()["matched_area"]["id"], area_id)
         self.assertEqual(response.get_json()["match_method"], "radius")
 
+    @patch("app.customer.routes.get_address_from_coordinates")
+    def test_customer_gps_ignores_a_deactivated_area(self, reverse_lookup):
+        with self.app.app_context():
+            area = db.session.scalar(db.select(ServiceArea))
+            area.center_latitude = 12.9716
+            area.center_longitude = 77.5946
+            area.radius_km = 25
+            area.is_active = False
+            db.session.commit()
+
+        reverse_lookup.return_value = {
+            "city": "Bengaluru",
+            "state": "Karnataka",
+            "pin_code": "560001",
+            "full_address": "Bengaluru, Karnataka",
+        }
+        response = self.client.post(
+            "/api/customer/detect-service-area",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={"latitude": 12.9716, "longitude": 77.5946},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.get_json()["matched_area"])
+
     def test_booking_for_other_requires_recipient_contact(self):
         with self.app.app_context():
             service_id = db.session.scalar(db.select(ServiceType.id))
