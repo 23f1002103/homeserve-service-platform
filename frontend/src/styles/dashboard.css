@@ -212,10 +212,52 @@
 .admin-records .approval-actions .approve-action { color: #fff; border-color: #315d4d; background: #315d4d; }
 .admin-records .approval-actions .unblock-action { color: #fff; border-color: #315d4d; background: #315d4d; }
 .admin-records .approval-actions .block-action { color: #923f2b; border-color: #bd8e80; background: transparent; }
-.customer-records article { grid-template-columns: auto 1.2fr 0.8fr 1fr auto; }
+.customer-records article { grid-template-columns: auto 1.2fr 0.8fr 1fr auto auto; }
 .customer-records code,
 .request-records code { color: #8a6653; font: 0.66rem ui-monospace, monospace; }
+.record-view-link { padding: 7px 9px; border: 1px solid #8fa099; color: #264b3e; font-size: 0.67rem; font-weight: 850; white-space: nowrap; }
+.record-view-link:hover { color: #fff; border-color: #315d4d; background: #315d4d; }
+.admin-records .approval-actions .record-view-link { display: grid; place-items: center; }
 .records-empty { padding: 45px 0; color: #727c76; text-align: center; }
+
+/* Admin customer and professional records */
+.admin-person-detail { padding-top: 42px; padding-bottom: 90px; }
+.admin-back-link { display: inline-flex; margin-bottom: 35px; color: #486158; font-size: 0.72rem; font-weight: 850; }
+.admin-back-link:hover { color: #a55232; }
+.person-detail-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 45px; align-items: end; min-height: 185px; padding-bottom: 40px; }
+.person-detail-heading h1 { margin: 0; overflow-wrap: anywhere; font-size: clamp(3.2rem, 7vw, 6.3rem); line-height: 0.9; }
+.person-detail-heading > p { width: min(100%, 390px); margin: 0; color: #657069; line-height: 1.7; }
+.person-heading-actions { display: flex; gap: 9px; align-items: center; justify-content: flex-end; flex-wrap: wrap; max-width: 430px; }
+.person-heading-actions button { min-height: 39px; padding: 0 14px; font-size: 0.68rem; font-weight: 850; }
+.person-action-primary { border: 1px solid #315d4d; color: #fff; background: #315d4d; }
+.person-action-danger { border: 1px solid #bd8e80; color: #923f2b; background: transparent; }
+.person-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #aeb5af; }
+.person-summary-grid article { display: grid; gap: 22px; min-height: 135px; padding: 23px; border-right: 1px solid #bfc4bd; }
+.person-summary-grid article:last-child { border-right: 0; }
+.person-summary-grid small { color: #78827c; font-size: 0.61rem; font-weight: 850; letter-spacing: 0.08em; }
+.person-summary-grid strong { align-self: end; font-family: Georgia, serif; font-size: clamp(1.8rem, 3vw, 2.7rem); font-weight: 500; }
+.person-profile-sheet { display: grid; grid-template-columns: 0.75fr 1.25fr; margin-top: 55px; border-block: 1px solid #aeb5af; }
+.person-profile-intro { display: grid; align-content: start; gap: 35px; min-height: 390px; padding: 42px; color: #f5f0e7; background: #21483b; }
+.person-profile-intro > span { display: grid; width: 62px; height: 62px; place-items: center; border: 1px solid #8ea69c; border-radius: 50%; font: 1.5rem Georgia, serif; }
+.person-profile-intro h2 { margin: 7px 0 10px; color: inherit; font-size: clamp(2.2rem, 4vw, 3.8rem); line-height: 0.95; }
+.person-profile-intro small { color: #b8c8c1; }
+.person-profile-intro .workbench-label { color: #e6a17a; }
+.person-profile-sheet dl { margin: 0; padding: 28px 42px; background: rgb(255 255 255 / 25%); }
+.person-profile-sheet dl div { display: grid; grid-template-columns: 145px 1fr; gap: 25px; padding: 17px 0; border-bottom: 1px solid #c7cbc5; }
+.person-profile-sheet dl div:last-child { border-bottom: 0; }
+.person-profile-sheet dt { color: #707b74; font-size: 0.67rem; }
+.person-profile-sheet dd { margin: 0; overflow-wrap: anywhere; font-size: 0.82rem; }
+.person-profile-sheet .person-restriction-reason dd { color: #8e3d31; }
+.person-history-section { margin-top: 85px; }
+.person-history-section > header { display: flex; gap: 30px; align-items: end; justify-content: space-between; padding-bottom: 25px; }
+.person-history-section h2 { margin: 5px 0 0; font-size: clamp(2.4rem, 5vw, 4.2rem); line-height: 0.95; }
+.person-history-section > header > span { color: #707b74; font: 0.65rem ui-monospace, monospace; }
+.person-history-list { border-top: 2px solid #253a34; }
+.person-history-list article { display: grid; grid-template-columns: 65px 1fr 1fr 0.8fr 1fr auto; gap: 18px; align-items: center; min-height: 80px; border-bottom: 1px solid #bfc4bd; }
+.person-history-list article > div { display: grid; gap: 5px; min-width: 0; }
+.person-history-list small { color: #768079; font-size: 0.65rem; }
+.person-history-list strong { overflow-wrap: anywhere; font-size: 0.76rem; }
+.person-history-list code { color: #8a6653; font: 0.66rem ui-monospace, monospace; }
 
 .request-records { border-top: 2px solid #253a34; }
 .request-records article { display: grid; grid-template-columns: 70px 1fr 1fr 1fr 0.8fr auto; gap: 18px; align-items: center; min-height: 78px; border-bottom: 1px solid #bfc4bd; }
@@ -1001,6 +1043,15 @@
   .admin-records article { grid-template-columns: auto 1fr 1fr; }
   .admin-records article > *:nth-child(n + 4) { grid-column: auto; }
   .customer-records article { grid-template-columns: auto 1fr 1fr; }
+  .person-detail-heading { grid-template-columns: 1fr; gap: 25px; }
+  .person-heading-actions { justify-content: flex-start; }
+  .person-summary-grid { grid-template-columns: 1fr 1fr; }
+  .person-summary-grid article:nth-child(2) { border-right: 0; }
+  .person-summary-grid article:nth-child(-n + 2) { border-bottom: 1px solid #bfc4bd; }
+  .person-profile-sheet { grid-template-columns: 1fr; }
+  .person-profile-intro { min-height: 270px; }
+  .person-history-list article { grid-template-columns: 55px 1fr 1fr; padding-block: 16px; }
+  .person-history-list article > *:nth-child(n + 4) { grid-column: 2 / -1; }
   .request-records article { grid-template-columns: 60px repeat(2, 1fr); padding-block: 18px; }
   .role-section-heading { grid-template-columns: 1fr; gap: 22px; }
   .detail-sheet { grid-template-columns: 1fr; }
@@ -1096,6 +1147,15 @@
   .customer-records article > *:not(.list-monogram):not(.record-identity) { grid-column: 2; }
   .request-records article { grid-template-columns: 50px 1fr; }
   .request-records article > *:not(code) { grid-column: 2; }
+  .person-summary-grid { grid-template-columns: 1fr; }
+  .person-summary-grid article { min-height: 110px; border-right: 0; border-bottom: 1px solid #bfc4bd; }
+  .person-summary-grid article:last-child { border-bottom: 0; }
+  .person-profile-intro,
+  .person-profile-sheet dl { padding: 28px 24px; }
+  .person-profile-sheet dl div { grid-template-columns: 1fr; gap: 6px; }
+  .person-history-section > header { align-items: start; flex-direction: column; gap: 12px; }
+  .person-history-list article { grid-template-columns: 45px 1fr; }
+  .person-history-list article > *:not(code) { grid-column: 2; }
   .role-section-heading h1 { font-size: 3.5rem; }
   .role-page-links > a { grid-template-columns: 40px 1fr auto; }
   .customer-glance { min-height: 290px; }

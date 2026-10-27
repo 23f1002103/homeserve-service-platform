@@ -6,6 +6,8 @@ import RegisterPage from '../pages/RegisterPage.vue'
 import AdminDashboard from '../pages/AdminDashboard.vue'
 import AdminProfessionalsPage from '../pages/AdminProfessionalsPage.vue'
 import AdminCustomersPage from '../pages/AdminCustomersPage.vue'
+import AdminProfessionalDetailPage from '../pages/AdminProfessionalDetailPage.vue'
+import AdminCustomerDetailPage from '../pages/AdminCustomerDetailPage.vue'
 import AdminServicesPage from '../pages/AdminServicesPage.vue'
 import AdminServiceAreasPage from '../pages/AdminServiceAreasPage.vue'
 import AdminRequestsPage from '../pages/AdminRequestsPage.vue'
@@ -45,9 +47,21 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'admin' },
     },
     {
+      path: '/admin/professionals/:id',
+      name: 'admin-professional-detail',
+      component: AdminProfessionalDetailPage,
+      meta: { requiresAuth: true, role: 'admin' },
+    },
+    {
       path: '/admin/customers',
       name: 'admin-customers',
       component: AdminCustomersPage,
+      meta: { requiresAuth: true, role: 'admin' },
+    },
+    {
+      path: '/admin/customers/:id',
+      name: 'admin-customer-detail',
+      component: AdminCustomerDetailPage,
       meta: { requiresAuth: true, role: 'admin' },
     },
     {

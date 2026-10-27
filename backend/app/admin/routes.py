@@ -95,6 +95,53 @@ def professional_rating(professional_id):
     return round(sum(ratings) / len(ratings), 1), len(ratings)
 
 
+def serialize_admin_booking(service_request):
+    payment = service_request.payments[0] if service_request.payments else None
+    review = service_request.reviews[0] if service_request.reviews else None
+    return {
+        "id": service_request.id,
+        "service": service_request.service_type.name,
+        "status": service_request.status,
+        "scheduled_for": (
+            service_request.scheduled_for.isoformat()
+            if service_request.scheduled_for
+            else None
+        ),
+        "created_at": (
+            service_request.created_at.isoformat()
+            if service_request.created_at
+            else None
+        ),
+        "completed_at": (
+            service_request.completed_at.isoformat()
+            if service_request.completed_at
+            else None
+        ),
+        "service_address": service_request.service_address,
+        "customer": service_request.customer.user.username,
+        "professional": (
+            service_request.professional.user.username
+            if service_request.professional
+            else None
+        ),
+        "payment": (
+            {
+                "amount": str(payment.amount),
+                "status": payment.status,
+                "professional_earning": str(payment.professional_earning),
+                "platform_fee": str(payment.platform_fee),
+            }
+            if payment
+            else None
+        ),
+        "review": (
+            {"rating": review.rating, "comment": review.comment}
+            if review
+            else None
+        ),
+    }
+
+
 def platform_revenue(start_at=None, end_at=None):
     query = db.select(ServiceRequest).where(ServiceRequest.status == "completed")
     if start_at is not None:
@@ -232,6 +279,69 @@ def professionals():
     return {"professionals": results}, 200
 
 
+@admin.get("/professionals/<int:professional_id>")
+@roles_required("admin")
+def professional_details(professional_id):
+    professional = db.session.get(Professional, professional_id)
+    if professional is None:
+        return {"message": "Professional not found"}, 404
+
+    jobs = db.session.scalars(
+        db.select(ServiceRequest)
+        .where(ServiceRequest.professional_id == professional.id)
+        .order_by(ServiceRequest.created_at.desc(), ServiceRequest.id.desc())
+    ).all()
+    average_rating, review_count = professional_rating(professional.id)
+    completed_payments = [
+        job.payments[0]
+        for job in jobs
+        if job.status == "completed"
+        and job.payments
+        and job.payments[0].status == "completed"
+    ]
+
+    return {
+        "professional": {
+            "id": professional.id,
+            "username": professional.user.username,
+            "email": professional.user.email,
+            "phone_number": professional.user.phone_number,
+            "address": professional.address,
+            "city": professional.city,
+            "state": professional.state,
+            "pin_code": professional.pin_code,
+            "service": professional.service_type.name,
+            "experience_years": professional.experience_years,
+            "approval_status": professional.approval_status,
+            "block_reason": professional.block_reason,
+            "location_verified_at": (
+                professional.location_verified_at.isoformat()
+                if professional.location_verified_at
+                else None
+            ),
+            "active_service_area": (
+                serialize_service_area(professional.active_service_area)
+                if professional.active_service_area
+                else None
+            ),
+            "average_rating": average_rating,
+            "review_count": review_count,
+        },
+        "summary": {
+            "total_jobs": len(jobs),
+            "active_jobs": sum(job.status == "accepted" for job in jobs),
+            "completed_jobs": sum(job.status == "completed" for job in jobs),
+            "total_earnings": str(
+                sum(
+                    (payment.professional_earning for payment in completed_payments),
+                    Decimal("0.00"),
+                )
+            ),
+        },
+        "jobs": [serialize_admin_booking(job) for job in jobs],
+    }, 200
+
+
 @admin.get("/revenue")
 @roles_required("admin")
 def revenue():
@@ -349,6 +459,55 @@ def customers():
             }
             for customer in customer_list
         ]
+    }, 200
+
+
+@admin.get("/customers/<int:customer_id>")
+@roles_required("admin")
+def customer_details(customer_id):
+    customer = db.session.get(Customer, customer_id)
+    if customer is None:
+        return {"message": "Customer not found"}, 404
+
+    bookings = db.session.scalars(
+        db.select(ServiceRequest)
+        .where(ServiceRequest.customer_id == customer.id)
+        .order_by(ServiceRequest.created_at.desc(), ServiceRequest.id.desc())
+    ).all()
+    completed_payments = [
+        booking.payments[0]
+        for booking in bookings
+        if booking.payments and booking.payments[0].status == "completed"
+    ]
+
+    return {
+        "customer": {
+            "id": customer.id,
+            "username": customer.user.username,
+            "email": customer.user.email,
+            "phone_number": customer.user.phone_number,
+            "address": customer.address,
+            "city": customer.city,
+            "state": customer.state,
+            "pin_code": customer.pinCode,
+        },
+        "summary": {
+            "total_bookings": len(bookings),
+            "active_bookings": sum(
+                booking.status in {"payment_pending", "pending", "accepted"}
+                for booking in bookings
+            ),
+            "completed_bookings": sum(
+                booking.status == "completed" for booking in bookings
+            ),
+            "total_spent": str(
+                sum(
+                    (payment.amount for payment in completed_payments),
+                    Decimal("0.00"),
+                )
+            ),
+        },
+        "bookings": [serialize_admin_booking(booking) for booking in bookings],
     }, 200
 
 

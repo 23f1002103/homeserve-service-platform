@@ -12,6 +12,7 @@ const filter = ref('all')
 const searchQuery = ref('')
 const pendingBlock = ref(null)
 const updatingProfessionalId = ref(null)
+const professionalStatusLabel = status => ({ pending: 'Pending review', approved: 'Approved', blocked: 'Restricted' }[status] || status)
 const visibleProfessionals = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   return professionals.value.filter((item) => {
@@ -78,11 +79,12 @@ onMounted(loadProfessionals)
           <div><small>Service</small><strong>{{ professional.service }}</strong></div>
           <div><small>Location</small><strong>{{ professional.city }}</strong></div>
           <div class="record-rating"><small>Rating</small><strong>{{ professional.average_rating ? `${professional.average_rating} ★` : 'New' }}</strong><small>{{ professional.review_count }} review{{ professional.review_count === 1 ? '' : 's' }}</small></div>
-          <span class="record-status" :class="`status-${professional.approval_status}`">{{ professional.approval_status }}</span>
+          <span class="record-status" :class="`status-${professional.approval_status}`">{{ professionalStatusLabel(professional.approval_status) }}</span>
           <div class="approval-actions">
+            <RouterLink class="record-view-link" :to="`/admin/professionals/${professional.id}`">View</RouterLink>
             <button v-if="professional.approval_status === 'pending'" class="approve-action" :disabled="updatingProfessionalId === professional.id" @click="updateApplication(professional, 'approved')">Approve</button>
-            <button v-if="professional.approval_status === 'blocked'" class="unblock-action" :disabled="updatingProfessionalId === professional.id" @click="updateApplication(professional, 'approved')">Unblock</button>
-            <button v-if="professional.approval_status !== 'blocked'" class="block-action" :disabled="updatingProfessionalId === professional.id" @click="requestBlock(professional)">Block</button>
+            <button v-if="professional.approval_status === 'blocked'" class="unblock-action" :disabled="updatingProfessionalId === professional.id" @click="updateApplication(professional, 'approved')">Reactivate</button>
+            <button v-if="professional.approval_status !== 'blocked'" class="block-action" :disabled="updatingProfessionalId === professional.id" @click="requestBlock(professional)">{{ professional.approval_status === 'pending' ? 'Reject' : 'Suspend' }}</button>
           </div>
         </article>
         <p v-if="!visibleProfessionals.length" class="records-empty">No professionals match this filter.</p>
@@ -91,11 +93,11 @@ onMounted(loadProfessionals)
     </main>
     <ConfirmActionModal
       :open="Boolean(pendingBlock)"
-      eyebrow="Account control"
-      :title="`Block ${pendingBlock?.username || 'this professional'}?`"
-      description="They will be unable to accept new jobs. Existing active work must be completed before the account can be blocked."
-      confirm-label="Block professional"
-      reason-label="Reason for blocking"
+      :eyebrow="pendingBlock?.approval_status === 'pending' ? 'Application decision' : 'Account control'"
+      :title="`${pendingBlock?.approval_status === 'pending' ? 'Reject' : 'Suspend'} ${pendingBlock?.username || 'this professional'}?`"
+      :description="pendingBlock?.approval_status === 'pending' ? 'The application will be rejected and the reason will remain in the admin record.' : 'They will be unable to accept new jobs. Existing active work must be completed first.'"
+      :confirm-label="pendingBlock?.approval_status === 'pending' ? 'Reject application' : 'Suspend account'"
+      :reason-label="pendingBlock?.approval_status === 'pending' ? 'Reason for rejection' : 'Reason for suspension'"
       reason-placeholder="Example: Repeated low ratings or policy violation"
       :busy="updatingProfessionalId === pendingBlock?.id"
       danger

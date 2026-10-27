@@ -40,6 +40,7 @@ onMounted(loadCustomers)
           <div><small>Phone</small><strong>{{ customer.phone_number || 'Not provided' }}</strong></div>
           <div><small>Location</small><strong>{{ customer.city }}, {{ customer.state }}</strong></div>
           <code>{{ customer.pin_code }}</code>
+          <RouterLink class="record-view-link" :to="`/admin/customers/${customer.id}`">View details →</RouterLink>
         </article>
         <p v-if="!visibleCustomers.length && !errorMessage" class="records-empty">{{ searchQuery ? 'No customers match your search.' : 'No customers have registered yet.' }}</p>
       </section>
