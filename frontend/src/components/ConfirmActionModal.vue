@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -16,6 +16,9 @@ const props = defineProps({
 
 const emit = defineEmits(['confirm', 'cancel'])
 const reason = ref('')
+const confirmDisabled = computed(() => (
+  props.busy || Boolean(props.reasonLabel && !reason.value.trim())
+))
 
 watch(() => props.open, (isOpen) => {
   if (isOpen) reason.value = ''
@@ -42,7 +45,7 @@ function confirm() {
         </label>
         <div class="confirm-action__buttons">
           <button type="button" class="confirm-action__cancel" :disabled="busy" @click="$emit('cancel')">{{ cancelLabel }}</button>
-          <button type="button" class="confirm-action__confirm" :class="{ 'is-danger': danger }" :disabled="busy || (reasonLabel && !reason.trim())" @click="confirm">{{ busy ? 'Working…' : confirmLabel }}</button>
+          <button type="button" class="confirm-action__confirm" :class="{ 'is-danger': danger }" :disabled="confirmDisabled" @click="confirm">{{ busy ? 'Working…' : confirmLabel }}</button>
         </div>
       </section>
     </div>
