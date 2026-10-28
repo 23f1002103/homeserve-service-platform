@@ -405,6 +405,9 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         accepted_after_completion = self.client.patch(
             f"/api/professional/jobs/{second_job_id}/accept", headers=headers
         )
+        assigned_manual_address = self.client.get(
+            "/api/professional/jobs", headers=headers
+        )
         reviewed = self.client.post(
             f"/api/customer/bookings/{job_id}/review",
             headers={"Authorization": f"Bearer {customer_token}"},
@@ -515,6 +518,16 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertIsNone(review_prompt_again.get_json()["review_prompt"])
         self.assertEqual(reviewed.status_code, 201)
         self.assertEqual(accepted_after_completion.status_code, 200)
+        manual_address_job = next(
+            job
+            for job in assigned_manual_address.get_json()["jobs"]
+            if job["id"] == second_job_id
+        )
+        self.assertEqual(manual_address_job["address"], "Another customer address")
+        self.assertIn(
+            "destination=Another+customer+address",
+            manual_address_job["directions_url"],
+        )
         self.assertEqual(profile_response.status_code, 200)
         self.assertEqual(profile_response.get_json()["profile"]["average_rating"], 5.0)
         self.assertEqual(profile_response.get_json()["profile"]["review_count"], 1)

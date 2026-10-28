@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from urllib.parse import quote_plus
 
 from flask import Blueprint, Response, request
 from flask_jwt_extended import get_jwt_identity
@@ -48,12 +49,14 @@ def valid_image_signature(image_data, mime_type):
 
 
 def directions_url(job):
-    if job.latitude is None or job.longitude is None:
-        return None
-    return (
-        "https://www.google.com/maps/dir/?api=1&destination="
-        f"{job.latitude},{job.longitude}"
-    )
+    if job.latitude is not None and job.longitude is not None:
+        destination = f"{job.latitude},{job.longitude}"
+    else:
+        destination = (job.service_address or "").strip()
+        if not destination:
+            return None
+        destination = quote_plus(destination)
+    return f"https://www.google.com/maps/dir/?api=1&destination={destination}"
 
 
 def earning_jobs(professional_id, start_at, end_at):
