@@ -123,8 +123,6 @@ onMounted(loadLandingPage)
           </div>
           <div class="hero-visual">
             <img :src="heroImage" alt="A welcoming modern home surrounded by greenery" />
-            <div class="floating-note floating-note--top"><span class="note-icon">✓</span>Professional verified</div>
-            <div class="floating-note floating-note--bottom"><span class="note-icon">⌂</span>Local help, clearly booked</div>
           </div>
         </section>
 
