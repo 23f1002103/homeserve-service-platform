@@ -311,13 +311,11 @@
 .professional-workbench { --paper: #ece8dc; --forest: #213a37; }
 .professional-bar { background: rgb(236 232 220 / 94%); }
 .professional-content { padding-top: 55px; }
-.professional-intro { display: grid; grid-template-columns: 1fr auto; gap: 50px; align-items: end; min-height: 335px; padding-bottom: 48px; }
-.professional-intro h1 { max-width: none; margin: 0; font-size: clamp(3.5rem, 7vw, 6.8rem); line-height: 0.87; }
-
-.shift-stamp { display: grid; width: 190px; min-height: 190px; padding: 24px; align-content: space-between; border: 1px solid #a6aaa1; border-radius: 50%; text-align: center; transform: rotate(4deg); }
-.shift-stamp small { color: #747d77; font-size: 0.58rem; font-weight: 850; letter-spacing: 0.14em; }
-.shift-stamp strong { color: #a55130; font: 1rem/1.2 ui-monospace, monospace; }
-.shift-stamp span { width: 7px; height: 7px; margin-inline: auto; border-radius: 50%; background: #254c40; }
+.professional-intro { display: flex; min-height: 335px; padding-bottom: 48px; align-items: end; }
+.professional-intro > div { width: 100%; }
+.professional-intro h1 { max-width: 1050px; margin: 0; font-size: clamp(3.5rem, 7vw, 6.8rem); line-height: 0.87; }
+.professional-intro h1 span { color: #a55130; }
+.professional-intro__copy { max-width: 520px; margin: 28px 0 0; color: #657069; font-size: 0.86rem; line-height: 1.65; }
 
 .approval-notice { display: grid; grid-template-columns: 0.42fr 1fr; gap: 40px; align-items: center; padding: 34px 38px; border-block: 1px solid #b68d6f; color: #f8eee4; background: #a55130; }
 .approval-notice > span { font: 0.65rem ui-monospace, monospace; letter-spacing: 0.12em; }
@@ -1118,8 +1116,7 @@
   .ledger-list article { grid-template-columns: 30px 1fr auto; gap: 10px; }
   .booking-path { transform-origin: left; transform: scale(0.82); }
   .dashboard-footer { gap: 10px; flex-direction: column; }
-  .professional-intro { grid-template-columns: 1fr; min-height: auto; }
-  .shift-stamp { width: 145px; min-height: 145px; justify-self: end; padding: 18px; }
+  .professional-intro { min-height: auto; }
   .approval-notice { grid-template-columns: 1fr; gap: 16px; padding: 27px; }
   .professional-summary { grid-template-columns: 1fr; }
   .professional-summary .trade-card { grid-column: auto; }

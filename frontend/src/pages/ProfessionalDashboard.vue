@@ -7,6 +7,14 @@ const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const dashboard = ref(null)
 const errorMessage = ref('')
+const currentHour = new Date().getHours()
+const greeting = currentHour < 12 ? 'Good morning' : currentHour < 17 ? 'Good afternoon' : 'Good evening'
+const displayName = user.username || 'Professional'
+const todayLabel = new Intl.DateTimeFormat('en-IN', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+}).format(new Date())
 const formatDate = (value) => value
   ? new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
   : 'Not scheduled'
@@ -31,8 +39,11 @@ onMounted(loadDashboard)
     <ProfessionalHeader current="overview" />
     <main class="workbench-content professional-content">
       <section class="professional-intro">
-        <div><p class="workbench-label">FIELD DESK / {{ user.username || 'PROFESSIONAL' }}</p><h1>Good work starts<br />with a clear plan.</h1></div>
-        <div class="shift-stamp"><small>ACCOUNT STATUS</small><strong>{{ dashboard ? 'READY FOR WORK' : 'CHECKING' }}</strong><span></span></div>
+        <div>
+          <p class="workbench-label">{{ todayLabel }}</p>
+          <h1>{{ greeting }},<br /><span>{{ displayName }}.</span></h1>
+          <p class="professional-intro__copy">Here is today’s work, schedule and earnings at a glance.</p>
+        </div>
       </section>
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <div v-else-if="!dashboard" class="dashboard-loading">Preparing your field desk…</div>
