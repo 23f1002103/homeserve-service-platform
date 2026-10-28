@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
 
 const profile = ref(null)
+const reviews = ref([])
 const editing = ref(false)
 const saving = ref(false)
 const photoInput = ref(null)
@@ -18,6 +19,7 @@ async function loadProfile() {
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Could not load profile')
     profile.value = data.profile
+    reviews.value = data.reviews || []
     Object.assign(form, data.profile)
   } catch (error) { errorMessage.value = error.message }
 }
@@ -43,6 +45,15 @@ async function saveProfile() {
 }
 
 function cancelEdit() { Object.assign(form, profile.value); editing.value = false; errorMessage.value = '' }
+
+function formatDate(value) {
+  if (!value) return 'Date unavailable'
+  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function ratingStars(rating) {
+  return `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`
+}
 
 async function uploadPhoto(event) {
   const file = event.target.files?.[0]
@@ -119,6 +130,24 @@ onMounted(loadProfile)
         <div class="profile-form-actions"><button type="button" @click="cancelEdit">Cancel</button><button type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save changes' }}</button></div>
       </form>
       <dl v-else><div><dt>Customer rating</dt><dd>{{ profile.average_rating ? `${profile.average_rating} / 5 (${profile.review_count} reviews)` : 'No ratings yet' }}</dd></div><div><dt>Email</dt><dd>{{ profile.email }}</dd></div><div><dt>Phone</dt><dd>{{ profile.phone_number || 'Not provided' }}</dd></div><div><dt>Experience</dt><dd>{{ profile.experience_years ?? 'Not provided' }}<span v-if="profile.experience_years"> years</span></dd></div><div><dt>Address</dt><dd>{{ profile.address }}</dd></div><div><dt>City and state</dt><dd>{{ profile.city }}, {{ profile.state }}</dd></div><div><dt>PIN code</dt><dd>{{ profile.pin_code }}</dd></div><div><dt>Status</dt><dd class="detail-status">{{ profile.approval_status }}</dd></div></dl>
+    </section>
+    <section v-if="profile" class="professional-review-history">
+      <header>
+        <div><p class="workbench-label">CUSTOMER FEEDBACK</p><h2>What customers said.</h2></div>
+        <span>{{ reviews.length }} review{{ reviews.length === 1 ? '' : 's' }}</span>
+      </header>
+      <div v-if="reviews.length" class="professional-review-list">
+        <article v-for="review in reviews" :key="review.booking_id">
+          <div class="professional-review-meta">
+            <code>#{{ String(review.booking_id).padStart(4, '0') }}</code>
+            <span>{{ review.service }}</span>
+            <time>{{ formatDate(review.completed_at || review.created_at) }}</time>
+          </div>
+          <strong :aria-label="`${review.rating} out of 5 stars`">{{ ratingStars(review.rating) }}</strong>
+          <p>{{ review.comment || 'The customer left a rating without a written comment.' }}</p>
+        </article>
+      </div>
+      <div v-else class="professional-review-empty"><span>☆</span><div><strong>No customer feedback yet.</strong><p>Completed and reviewed services will appear here.</p></div></div>
     </section>
     <RouterLink class="profile-earnings-link" to="/professional/earnings"><span>₹</span><div><strong>View earnings</strong><small>Open your week-by-week payout ledger</small></div><b>→</b></RouterLink>
   </main></div>

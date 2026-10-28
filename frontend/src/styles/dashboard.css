@@ -557,6 +557,23 @@
 .professional-rating { display: grid; gap: 2px; margin-top: 17px; padding-top: 15px; border-top: 1px solid rgb(255 255 255 / 22%); }
 .professional-rating strong { color: #fff0b8; font: 2rem Georgia, serif; }
 .professional-rating small { color: #bfcec8; font-size: 0.66rem; }
+.professional-review-history { margin-top: 80px; }
+.professional-review-history > header { display: flex; gap: 30px; align-items: end; justify-content: space-between; padding-bottom: 28px; border-bottom: 2px solid #253a34; }
+.professional-review-history h2 { margin: 6px 0 0; font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 0.94; }
+.professional-review-history > header > span { color: #707a74; font: 0.65rem ui-monospace, monospace; }
+.professional-review-list { display: grid; grid-template-columns: 1fr 1fr; }
+.professional-review-list article { min-height: 220px; padding: 30px; border-right: 1px solid #bcc1ba; border-bottom: 1px solid #bcc1ba; }
+.professional-review-list article:nth-child(even) { border-right: 0; }
+.professional-review-meta { display: flex; gap: 12px; align-items: center; color: #6d7871; font-size: 0.65rem; }
+.professional-review-meta code { color: #a55232; font: inherit; }
+.professional-review-meta time { margin-left: auto; }
+.professional-review-list article > strong { display: block; margin-top: 35px; color: #b16a26; font-size: 1.25rem; letter-spacing: 0.08em; }
+.professional-review-list article > p { max-width: 520px; margin: 16px 0 0; color: #58655f; font-family: Georgia, serif; font-size: 1.05rem; line-height: 1.55; }
+.professional-review-empty { display: flex; gap: 20px; align-items: center; min-height: 180px; border-bottom: 1px solid #bcc1ba; }
+.professional-review-empty > span { color: #a55232; font-size: 2rem; }
+.professional-review-empty div { display: grid; gap: 6px; }
+.professional-review-empty strong { font-family: Georgia, serif; font-size: 1.35rem; font-weight: 500; }
+.professional-review-empty p { margin: 0; color: #707a74; }
 .profile-earnings-link { display: grid; grid-template-columns: 52px 1fr auto; gap: 18px; align-items: center; margin-top: 18px; padding: 18px 21px; border: 1px solid #9eaaa3; color: #243f35; background: #e9eee9; }
 .profile-earnings-link > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; color: #fff; background: #a55130; font: 1.2rem Georgia, serif; }
 .profile-earnings-link > div { display: grid; gap: 4px; }
@@ -1122,6 +1139,8 @@
   .professional-summary .trade-card { grid-column: auto; }
   .professional-summary .earning-card { grid-column: auto; }
   .professional-summary article { min-height: 165px; border-right: 0; border-bottom: 1px solid #adb2ab; }
+  .professional-review-list { grid-template-columns: 1fr; }
+  .professional-review-list article { border-right: 0; }
   .professional-location-page { padding: 18px; }
   .location-card { min-height: 540px; margin-top: 3vh; padding: 28px 20px; }
   .location-radar { width: 160px; height: 160px; margin-bottom: 30px; }
@@ -1137,6 +1156,10 @@
   .role-job-list .job-row-actions { grid-column: 2 / -1; justify-self: start; flex-wrap: wrap; }
   .professional-profile { padding: 32px 25px; }
   .professional-profile dl div { grid-template-columns: 1fr; gap: 7px; }
+  .professional-review-history > header { align-items: start; flex-direction: column; gap: 12px; }
+  .professional-review-list article { min-height: 0; padding: 25px 4px; }
+  .professional-review-meta { flex-wrap: wrap; }
+  .professional-review-meta time { width: 100%; margin-left: 0; }
   .section-page-heading h1 { font-size: 3.5rem; }
   .admin-filters { overflow-x: auto; }
   .list-search,

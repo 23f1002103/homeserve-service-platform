@@ -377,7 +377,9 @@ def profile():
     reviews = []
     if job_ids:
         reviews = db.session.scalars(
-            db.select(Review).where(Review.service_request_id.in_(job_ids))
+            db.select(Review)
+            .where(Review.service_request_id.in_(job_ids))
+            .order_by(Review.created_at.desc(), Review.id.desc())
         ).all()
     average_rating = (
         round(sum(review.rating for review in reviews) / len(reviews), 1)
@@ -400,7 +402,24 @@ def profile():
             "average_rating": average_rating,
             "review_count": len(reviews),
             "profile_image_url": profile_photo_url(professional_profile),
-        }
+        },
+        "reviews": [
+            {
+                "booking_id": review.service_request_id,
+                "service": review.service_request.service_type.name,
+                "rating": review.rating,
+                "comment": review.comment,
+                "completed_at": (
+                    review.service_request.completed_at.isoformat()
+                    if review.service_request.completed_at
+                    else None
+                ),
+                "created_at": (
+                    review.created_at.isoformat() if review.created_at else None
+                ),
+            }
+            for review in reviews
+        ],
     }, 200
 
 

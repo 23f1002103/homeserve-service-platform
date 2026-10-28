@@ -531,6 +531,13 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(profile_response.status_code, 200)
         self.assertEqual(profile_response.get_json()["profile"]["average_rating"], 5.0)
         self.assertEqual(profile_response.get_json()["profile"]["review_count"], 1)
+        self.assertEqual(len(profile_response.get_json()["reviews"]), 1)
+        profile_review = profile_response.get_json()["reviews"][0]
+        self.assertEqual(profile_review["booking_id"], job_id)
+        self.assertEqual(profile_review["service"], "Plumbing")
+        self.assertEqual(profile_review["rating"], 5)
+        self.assertEqual(profile_review["comment"], "Excellent and tidy work.")
+        self.assertNotIn("customer", profile_review)
         self.assertEqual(
             profile_response.get_json()["profile"]["profile_image_url"],
             f"/api/professional/profiles/{first_professional_id}/photo",
