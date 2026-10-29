@@ -654,7 +654,10 @@
 .area-demand-panel { margin-bottom: 45px; padding: clamp(27px, 4vw, 45px); color: #eef4f0; background: #243f36; }
 .area-demand-panel__heading { display: grid; grid-template-columns: 1fr 340px; gap: 40px; align-items: end; padding-bottom: 28px; border-bottom: 1px solid rgb(255 255 255 / 18%); }
 .area-demand-panel__heading h2 { margin: 0; color: #fff; font-size: clamp(2rem, 4vw, 3.4rem); }
-.area-demand-panel__heading > p { margin: 0; color: #b7c6bf; font-size: 0.78rem; line-height: 1.6; }
+.area-demand-panel__controls { display: grid; gap: 18px; }
+.area-demand-panel__controls > p { margin: 0; color: #b7c6bf; font-size: 0.78rem; line-height: 1.6; }
+.area-demand-panel__controls label { display: grid; gap: 7px; color: #b9c9c1; font-size: 0.62rem; font-weight: 850; letter-spacing: 0.08em; text-transform: uppercase; }
+.area-demand-panel__controls select { width: 100%; padding: 11px 35px 11px 12px; border: 1px solid #849c91; color: #17362c; background: #eef1ea; font: 700 0.76rem inherit; text-transform: none; }
 .area-demand-chart { display: grid; gap: 16px; overflow-x: auto; padding-top: 30px; }
 .area-network-summary { display: flex; gap: 24px; align-items: baseline; margin-bottom: 8px; padding-bottom: 22px; border-bottom: 1px solid rgb(255 255 255 / 12%); }
 .area-network-summary span { display: flex; gap: 6px; align-items: baseline; color: #b7c6bf; font-size: 0.7rem; }
@@ -694,6 +697,11 @@
 .area-form-context small { color: #7b837e; font-size: 0.56rem; font-weight: 850; letter-spacing: 0.12em; }
 .area-form-context strong { margin-top: 3px; font: 500 1.2rem Georgia, serif; }
 .area-city-form .service-form-actions { grid-auto-flow: column; }
+.area-city-form .service-form-actions > button { padding: 13px 20px; border: 1px solid #294f42; color: #fff; background: #294f42; font-size: 0.72rem; font-weight: 850; transition: background 160ms ease, border-color 160ms ease, transform 160ms ease; }
+.area-city-form .service-form-actions > button:hover:not(:disabled) { border-color: #183e31; background: #183e31; transform: translateY(-1px); }
+.area-city-form .service-form-actions > button:disabled { cursor: wait; opacity: 0.62; }
+.area-city-form .service-form-actions > .service-form-cancel { border-color: #839087; color: #425149; background: transparent; }
+.area-city-form .service-form-actions > .service-form-cancel:hover:not(:disabled) { border-color: #56675e; color: #243b31; background: #e8e9e3; }
 .area-zone-editor { grid-column: 1 / -1; display: grid; grid-template-columns: 0.72fr 1.28fr; min-height: 430px; margin-top: 12px; border: 1px solid #aeb7b0; background: #f1eee6; }
 .area-zone-controls { display: grid; gap: 22px; align-content: start; padding: 28px; border-right: 1px solid #aeb7b0; }
 .area-zone-controls h3 { margin: 5px 0 9px; font: 500 1.8rem/1 Georgia, serif; }

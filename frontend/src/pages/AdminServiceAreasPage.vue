@@ -54,7 +54,7 @@ const filteredCities = computed(() => {
 })
 const pageCount = computed(() => Math.max(1, Math.ceil(filteredCities.value.length / pageSize)))
 const visibleCities = computed(() => filteredCities.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
-const cityDemand = computed(() => [...areas.value].sort((a, b) => b.demand_count - a.demand_count || a.city.localeCompare(b.city)).slice(0, 5))
+const cityDemand = computed(() => [...(activeGroup.value?.cities || [])].sort((a, b) => b.demand_count - a.demand_count || a.city.localeCompare(b.city)).slice(0, 5))
 const maximumDemand = computed(() => Math.max(1, ...cityDemand.value.map(area => area.demand_count)))
 
 watch(selectedState, () => { searchQuery.value = ''; currentPage.value = 1 })
@@ -294,9 +294,19 @@ onUnmounted(() => { map?.remove(); map = null })
       <header class="section-page-heading"><div><p class="workbench-label">NETWORK / AREAS</p><h1>States first.<br />Zones within.</h1></div><p>Choose a centre and radius for every service area. Customer and professional GPS coordinates are matched against the same zone.</p></header>
 
       <section class="area-demand-panel">
-        <div class="area-demand-panel__heading"><div><p class="workbench-label">LIVE DEMAND</p><h2>Requests by city</h2></div><p>Demand comes from customer bookings connected to each supported city.</p></div>
-        <div v-if="cityDemand.length" class="area-demand-chart"><div class="area-network-summary"><span><strong>{{ stateGroups.length }}</strong> states</span><span><strong>{{ areas.length }}</strong> cities</span><small>Top 5 cities ranked by booking demand</small></div><div class="city-demand-plot"><div class="city-demand-scale" aria-hidden="true"><span>{{ maximumDemand }}</span><span>{{ Math.ceil(maximumDemand / 2) }}</span><span>0</span></div><div class="city-demand-columns" :style="{ '--city-count': cityDemand.length }"><article v-for="(area, index) in cityDemand" :key="area.id"><div class="city-demand-column"><i :style="{ height: demandHeight(area.demand_count) }"><strong>{{ area.demand_count }}</strong></i></div><footer><span>#{{ index + 1 }}</span><b>{{ area.city }}</b><small>{{ area.state }}</small></footer></article></div></div></div>
-        <p v-else class="records-empty">Add the first state and city to begin building the network.</p>
+        <div class="area-demand-panel__heading">
+          <div><p class="workbench-label">LIVE DEMAND</p><h2>Requests by city</h2></div>
+          <div class="area-demand-panel__controls">
+            <p>Demand comes from customer bookings connected to each supported city.</p>
+            <label v-if="stateGroups.length">Rank cities in
+              <select v-model="selectedState" @change="selectState(selectedState)">
+                <option v-for="group in stateGroups" :key="group.state" :value="group.state">{{ group.state }}</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div v-if="cityDemand.length" class="area-demand-chart"><div class="area-network-summary"><span><strong>{{ activeGroup.cities.length }}</strong> cities</span><span><strong>{{ activeGroup.demand_count }}</strong> bookings</span><small>Top 5 cities in {{ activeGroup.state }} ranked by booking demand</small></div><div class="city-demand-plot"><div class="city-demand-scale" aria-hidden="true"><span>{{ maximumDemand }}</span><span>{{ Math.ceil(maximumDemand / 2) }}</span><span>0</span></div><div class="city-demand-columns" :style="{ '--city-count': cityDemand.length }"><article v-for="(area, index) in cityDemand" :key="area.id"><div class="city-demand-column"><i :style="{ height: demandHeight(area.demand_count) }"><strong>{{ area.demand_count }}</strong></i></div><footer><span>#{{ index + 1 }}</span><b>{{ area.city }}</b><small>{{ area.state }}</small></footer></article></div></div></div>
+        <p v-else class="records-empty">{{ stateGroups.length ? 'Select a state to view its city demand.' : 'Add the first state and city to begin building the network.' }}</p>
       </section>
 
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
@@ -314,14 +324,14 @@ onUnmounted(() => { map?.remove(); map = null })
           <header v-else><div><p class="workbench-label">NEW STATE</p><h2>Add its first city.</h2><p>The state will appear in the selector after its first supported city is saved.</p></div></header>
 
           <form class="area-city-form" @submit.prevent="saveArea">
-            <label v-if="addingNewState || editingAreaId">State<input v-model.trim="state" placeholder="Example: Karnataka" required /></label>
+            <label v-if="addingNewState || editingAreaId">State<input v-model.trim="state" required /></label>
             <div v-else class="area-form-context"><small>ADDING CITY TO</small><strong>{{ selectedState }}</strong></div>
-            <label>City<input v-model.trim="city" placeholder="Example: Bengaluru" required /></label>
-            <label>PIN code <small>Optional</small><input v-model.trim="pinCode" inputmode="numeric" placeholder="Example: 560001" /></label>
+            <label>City<input v-model.trim="city" required /></label>
+            <label>PIN code <small>Optional</small><input v-model.trim="pinCode" inputmode="numeric" /></label>
             <section class="area-zone-editor">
               <div class="area-zone-controls">
                 <div><p class="workbench-label">MAP SERVICE ZONE</p><h3>Set the centre and reach.</h3><p>Search once or click anywhere on the map, then choose how far HomeServe operates from that point.</p></div>
-                <label class="area-place-search">Find a place<div><input v-model.trim="placeSearch" placeholder="Example: Kolkata, West Bengal" @keydown.enter.prevent="searchForPlace" /><button type="button" :disabled="searchingPlace" @click="searchForPlace">{{ searchingPlace ? 'Searching…' : 'Search' }}</button></div></label>
+                <label class="area-place-search">Find a place<div><input v-model.trim="placeSearch" @keydown.enter.prevent="searchForPlace" /><button type="button" :disabled="searchingPlace" @click="searchForPlace">{{ searchingPlace ? 'Searching…' : 'Search' }}</button></div></label>
                 <label>Service radius <strong>{{ radiusKm }} km</strong><input v-model.number="radiusKm" type="range" min="1" max="100" step="1" /></label>
                 <dl><div><dt>Latitude</dt><dd>{{ centerLatitude ?? 'Click map' }}</dd></div><div><dt>Longitude</dt><dd>{{ centerLongitude ?? 'Click map' }}</dd></div></dl>
               </div>

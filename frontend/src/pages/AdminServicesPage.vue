@@ -105,9 +105,9 @@ onMounted(loadServices)
       <section class="service-manager standalone-manager">
         <div class="service-manager__intro"><p class="workbench-label">NEW SERVICE TYPE</p><h2>Add a clear service category.</h2><p>Give it a short description and the minimum price customers can expect.</p></div>
         <form class="service-form" @submit.prevent="createService">
-          <label>Service name<input v-model="serviceName" placeholder="Example: Plumbing" required /></label>
-          <label>Short description<textarea v-model="serviceDescription" maxlength="180" rows="3" placeholder="Example: Leak repairs, pipe fitting and tap replacement"></textarea><small>{{ serviceDescription.length }}/180 characters</small></label>
-          <label>Base price (₹)<input v-model="servicePrice" type="number" min="1" step="0.01" placeholder="Example: 499" required /></label>
+          <label>Service name<input v-model="serviceName" required /></label>
+          <label>Short description<textarea v-model="serviceDescription" maxlength="180" rows="3"></textarea><small>{{ serviceDescription.length }}/180 characters</small></label>
+          <label>Base price (₹)<input v-model="servicePrice" type="number" min="1" step="0.01" required /></label>
           <button type="submit" :disabled="creating">{{ creating ? 'Creating…' : 'Add service type' }}</button>
         </form>
         <div class="service-type-list">
