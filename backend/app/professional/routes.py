@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from functools import wraps
 from urllib.parse import quote_plus
 
 from flask import Blueprint, Response, request
@@ -8,6 +9,7 @@ from flask_jwt_extended import get_jwt_identity
 from ..auth.decorators import roles_required
 from ..database import db
 from ..location import (
+    coordinate_distance_km,
     find_area_for_coordinates,
     get_address_from_coordinates,
     location_matches_area,
@@ -26,6 +28,26 @@ from ..tasks import enqueue_task, send_booking_completed
 professional = Blueprint("professional", __name__)
 MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024
 PROFILE_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+def blocked_professionals_forbidden(view):
+    """Prevent a suspended account from reading or changing field-desk data."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        profile = db.session.scalar(
+            db.select(Professional).where(
+                Professional.user_id == int(get_jwt_identity())
+            )
+        )
+        if profile is not None and profile.approval_status == "blocked":
+            return {
+                "message": "This professional account is suspended",
+                "approval_status": "blocked",
+                "block_reason": profile.block_reason,
+            }, 403
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 def profile_photo_url(profile):
@@ -106,10 +128,38 @@ def available_jobs_for(profile, has_active_job=False):
     ).all()
 
 
-def serialize_available_job(job):
+def serialize_available_job(job, profile):
+    distance_km = None
+    if all(
+        value is not None
+        for value in (
+            profile.current_latitude,
+            profile.current_longitude,
+            job.latitude,
+            job.longitude,
+        )
+    ):
+        distance_km = round(
+            coordinate_distance_km(
+                profile.current_latitude,
+                profile.current_longitude,
+                job.latitude,
+                job.longitude,
+            ),
+            1,
+        )
+    package_jobs = job.package_order.jobs if job.package_order else []
     return {
         "id": job.id,
-        "service": job.service_name,
+        "service": job.service_type.name,
+        "booking_type": "combo" if job.package_order_id else "standard",
+        "package_name": (
+            job.package_order.service_package.name if job.package_order else None
+        ),
+        "combo_position": (
+            package_jobs.index(job) + 1 if job.package_order else None
+        ),
+        "combo_total": len(package_jobs) if job.package_order else None,
         "area": (
             f"{job.service_area.city}, {job.service_area.state}"
             if job.service_area
@@ -119,6 +169,10 @@ def serialize_available_job(job):
         "scheduled_for": job.scheduled_for.isoformat() if job.scheduled_for else None,
         "description": job.description,
         "price": str(job.payments[0].amount) if job.payments else None,
+        "professional_earning": (
+            str(job.payments[0].professional_earning) if job.payments else None
+        ),
+        "distance_km": distance_km,
     }
 
 
@@ -131,6 +185,12 @@ def dashboard():
     )
     if profile is None:
         return {"message": "Professional profile not found"}, 404
+    if profile.approval_status == "blocked":
+        return {
+            "approval_status": "blocked",
+            "block_reason": profile.block_reason,
+            "location_verified": False,
+        }, 200
 
     accepted_jobs = db.session.scalar(
         db.select(db.func.count(ServiceRequest.id)).where(
@@ -172,14 +232,31 @@ def dashboard():
             else None
         ),
         "available_jobs": [
-            serialize_available_job(job) for job in available_jobs[:3]
+            serialize_available_job(job, profile) for job in available_jobs[:3]
         ],
         "available_job_count": len(available_jobs),
     }, 200
 
 
+@professional.get("/status")
+@roles_required("professional")
+def account_status():
+    profile = db.session.scalar(
+        db.select(Professional).where(
+            Professional.user_id == int(get_jwt_identity())
+        )
+    )
+    if profile is None:
+        return {"message": "Professional profile not found"}, 404
+    return {
+        "approval_status": profile.approval_status,
+        "block_reason": profile.block_reason,
+    }, 200
+
+
 @professional.get("/jobs")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def jobs():
     user_id = int(get_jwt_identity())
     profile = db.session.scalar(
@@ -223,7 +300,9 @@ def jobs():
             }
             for job in assigned_jobs
         ],
-        "available_jobs": [serialize_available_job(job) for job in available_jobs],
+        "available_jobs": [
+            serialize_available_job(job, profile) for job in available_jobs
+        ],
         "can_accept_jobs": profile.approval_status == "approved",
         "has_active_job": has_active_job,
     }, 200
@@ -231,6 +310,7 @@ def jobs():
 
 @professional.patch("/jobs/<int:job_id>/accept")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def accept_job(job_id):
     user_id = int(get_jwt_identity())
     profile = db.session.scalar(
@@ -291,6 +371,7 @@ def accept_job(job_id):
 
 @professional.patch("/jobs/<int:job_id>/complete")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def complete_job(job_id):
     user_id = int(get_jwt_identity())
     profile = db.session.scalar(
@@ -326,6 +407,7 @@ def complete_job(job_id):
 
 @professional.get("/earnings")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def earnings():
     user_id = int(get_jwt_identity())
     profile = db.session.scalar(
@@ -375,6 +457,7 @@ def earnings():
 
 @professional.get("/profile")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def profile():
     user_id = int(get_jwt_identity())
     professional_profile = db.session.scalar(
@@ -439,6 +522,7 @@ def profile():
 
 @professional.patch("/profile")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def update_profile():
     user_id = int(get_jwt_identity())
     professional_profile = db.session.scalar(
@@ -476,6 +560,7 @@ def update_profile():
 
 @professional.put("/profile/photo")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def update_profile_photo():
     user_id = int(get_jwt_identity())
     professional_profile = db.session.scalar(
@@ -523,6 +608,7 @@ def update_profile_photo():
 
 @professional.delete("/profile/photo")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def delete_profile_photo():
     user_id = int(get_jwt_identity())
     professional_profile = db.session.scalar(
@@ -560,6 +646,7 @@ def public_profile_photo(professional_id):
 
 @professional.post("/detect-service-area")
 @roles_required("professional")
+@blocked_professionals_forbidden
 def detect_service_area():
     user_id = int(get_jwt_identity())
     profile = db.session.scalar(
@@ -599,6 +686,8 @@ def detect_service_area():
 
     profile.active_service_area = matched_area
     profile.location_verified_at = datetime.now() if matched_area else None
+    profile.current_latitude = latitude if matched_area else None
+    profile.current_longitude = longitude if matched_area else None
     db.session.commit()
 
     return {

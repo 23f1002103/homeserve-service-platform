@@ -75,6 +75,29 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(body["available_jobs"], [])
         self.assertEqual(body["available_job_count"], 0)
 
+    def test_blocked_professional_cannot_access_field_desk_data(self):
+        with self.app.app_context():
+            professional = db.session.scalar(db.select(Professional))
+            professional.approval_status = "blocked"
+            professional.block_reason = "Documents require verification"
+            db.session.commit()
+
+        headers = {"Authorization": f"Bearer {self.professional_token}"}
+        status = self.client.get("/api/professional/status", headers=headers)
+        dashboard = self.client.get("/api/professional/dashboard", headers=headers)
+        jobs = self.client.get("/api/professional/jobs", headers=headers)
+        earnings = self.client.get("/api/professional/earnings", headers=headers)
+        profile = self.client.get("/api/professional/profile", headers=headers)
+
+        self.assertEqual(status.status_code, 200)
+        self.assertEqual(status.get_json()["approval_status"], "blocked")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(dashboard.get_json()["approval_status"], "blocked")
+        self.assertNotIn("service", dashboard.get_json())
+        self.assertEqual(jobs.status_code, 403)
+        self.assertEqual(earnings.status_code, 403)
+        self.assertEqual(profile.status_code, 403)
+
     def test_professional_pages_return_separate_data(self):
         headers = {"Authorization": f"Bearer {self.professional_token}"}
 
@@ -183,6 +206,8 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             professional = db.session.scalar(db.select(Professional))
             self.assertEqual(professional.active_service_area_id, area_id)
             self.assertIsNotNone(professional.location_verified_at)
+            self.assertEqual(professional.current_latitude, 12.9)
+            self.assertEqual(professional.current_longitude, 77.6)
 
     @patch("app.professional.routes.get_address_from_coordinates")
     def test_professional_gps_uses_radius_when_city_name_is_different(self, reverse_lookup):
@@ -253,6 +278,8 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
             professional = db.session.scalar(db.select(Professional))
             first_professional_id = professional.id
             professional.approval_status = "approved"
+            professional.current_latitude = 12.9616
+            professional.current_longitude = 77.5846
             area = ServiceArea(
                 city="Bengaluru", state="Karnataka", pin_code="560001"
             )
@@ -460,6 +487,17 @@ class ProfessionalDashboardTestCase(unittest.TestCase):
         self.assertEqual(available.status_code, 200)
         self.assertEqual(uploaded_photo.status_code, 200)
         self.assertEqual(len(available.get_json()["available_jobs"]), 2)
+        first_available = next(
+            job
+            for job in available.get_json()["available_jobs"]
+            if job["id"] == job_id
+        )
+        self.assertEqual(first_available["booking_type"], "standard")
+        self.assertEqual(first_available["professional_earning"], "85.00")
+        self.assertGreater(first_available["distance_km"], 0)
+        self.assertNotIn("latitude", first_available)
+        self.assertNotIn("longitude", first_available)
+        self.assertNotIn("address", first_available)
         self.assertEqual(dashboard_available.get_json()["available_job_count"], 2)
         self.assertEqual(len(dashboard_available.get_json()["available_jobs"]), 2)
         self.assertTrue(dashboard_available.get_json()["location_verified"])

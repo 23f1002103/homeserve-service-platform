@@ -1,10 +1,13 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
 import PageHeading from '../components/PageHeading.vue'
+import ListPagination from '../components/ListPagination.vue'
 
 const profile = ref(null)
 const reviews = ref([])
+const reviewPage = ref(1)
+const reviewsPerPage = 4
 const editing = ref(false)
 const saving = ref(false)
 const photoInput = ref(null)
@@ -13,6 +16,11 @@ const photoVersion = ref(Date.now())
 const errorMessage = ref('')
 const successMessage = ref('')
 const form = reactive({ phone_number: '', experience_years: null, address: '', city: '', state: '', pin_code: '' })
+const reviewPageCount = computed(() => Math.max(1, Math.ceil(reviews.value.length / reviewsPerPage)))
+const visibleReviews = computed(() => {
+  const start = (reviewPage.value - 1) * reviewsPerPage
+  return reviews.value.slice(start, start + reviewsPerPage)
+})
 
 async function loadProfile() {
   try {
@@ -138,7 +146,7 @@ onMounted(loadProfile)
         <span>{{ reviews.length }} review{{ reviews.length === 1 ? '' : 's' }}</span>
       </header>
       <div v-if="reviews.length" class="professional-review-list">
-        <article v-for="review in reviews" :key="review.booking_id">
+        <article v-for="review in visibleReviews" :key="review.booking_id">
           <div class="professional-review-meta">
             <code>#{{ String(review.booking_id).padStart(4, '0') }}</code>
             <span>{{ review.service }}</span>
@@ -148,7 +156,8 @@ onMounted(loadProfile)
           <p>{{ review.comment || 'The customer left a rating without a written comment.' }}</p>
         </article>
       </div>
-      <div v-else class="professional-review-empty"><span>☆</span><div><strong>No customer feedback yet.</strong><p>Completed and reviewed services will appear here.</p></div></div>
+      <ListPagination v-if="reviews.length > reviewsPerPage" v-model:page="reviewPage" :page-count="reviewPageCount" :total="reviews.length" :visible-count="visibleReviews.length" label="reviews" />
+      <div v-if="!reviews.length" class="professional-review-empty"><span>☆</span><div><strong>No customer feedback yet.</strong><p>Completed and reviewed services will appear here.</p></div></div>
     </section>
     <RouterLink class="profile-earnings-link" to="/professional/earnings"><span>₹</span><div><strong>View earnings</strong><small>Open your week-by-week payout ledger</small></div><b>→</b></RouterLink>
   </main></div>

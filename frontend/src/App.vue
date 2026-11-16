@@ -6,7 +6,9 @@ const activeRequests = ref(0)
 const showNetworkLoader = ref(false)
 const offline = ref(!navigator.onLine)
 const connectionRestored = ref(false)
+const toast = ref(null)
 let restoredTimer
+let toastTimer
 let loaderStartedAt = 0
 let loaderTimer
 let loaderDelayTimer
@@ -52,17 +54,31 @@ function handleOnline() {
   restoredTimer = window.setTimeout(() => { connectionRestored.value = false }, 3500)
 }
 
+function showToast(event) {
+  window.clearTimeout(toastTimer)
+  toast.value = event.detail
+  toastTimer = window.setTimeout(() => { toast.value = null }, 3500)
+}
+
+function dismissToast() {
+  window.clearTimeout(toastTimer)
+  toast.value = null
+}
+
 window.addEventListener('homeserve:network-activity', updateNetworkActivity)
 window.addEventListener('offline', handleOffline)
 window.addEventListener('online', handleOnline)
+window.addEventListener('homeserve:toast', showToast)
 
 onUnmounted(() => {
   window.removeEventListener('homeserve:network-activity', updateNetworkActivity)
   window.removeEventListener('offline', handleOffline)
   window.removeEventListener('online', handleOnline)
+  window.removeEventListener('homeserve:toast', showToast)
   window.clearTimeout(restoredTimer)
   window.clearTimeout(loaderTimer)
   window.clearTimeout(loaderDelayTimer)
+  window.clearTimeout(toastTimer)
 })
 </script>
 
@@ -90,6 +106,11 @@ onUnmounted(() => {
   <Transition name="connection-notice">
     <aside v-if="offline" class="connection-banner is-offline" role="alert"><span></span><div><strong>You’re offline</strong><small>Check your internet connection. HomeServe will reconnect automatically.</small></div></aside>
     <aside v-else-if="connectionRestored" class="connection-banner is-online" role="status"><span>✓</span><div><strong>Back online</strong><small>Your connection has been restored.</small></div></aside>
+  </Transition>
+  <Transition name="toast">
+    <aside v-if="toast" class="app-toast" :class="`is-${toast.type || 'success'}`" role="status" aria-live="polite">
+      <span aria-hidden="true">✓</span><div><strong>{{ toast.title || 'Done' }}</strong><small>{{ toast.message }}</small></div><button type="button" aria-label="Dismiss message" @click="dismissToast">×</button>
+    </aside>
   </Transition>
   <RouterView />
 </template>

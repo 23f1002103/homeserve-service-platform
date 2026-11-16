@@ -57,6 +57,22 @@ def coordinates_match_area(latitude, longitude, area):
     return distance_km <= area.radius_km
 
 
+def coordinate_distance_km(latitude_1, longitude_1, latitude_2, longitude_2):
+    """Return straight-line distance without exposing either coordinate."""
+    earth_radius_km = 6371.0088
+    lat_1 = math.radians(latitude_1)
+    lat_2 = math.radians(latitude_2)
+    latitude_delta = math.radians(latitude_2 - latitude_1)
+    longitude_delta = math.radians(longitude_2 - longitude_1)
+    haversine = (
+        math.sin(latitude_delta / 2) ** 2
+        + math.cos(lat_1)
+        * math.cos(lat_2)
+        * math.sin(longitude_delta / 2) ** 2
+    )
+    return 2 * earth_radius_km * math.asin(math.sqrt(haversine))
+
+
 def find_area_for_coordinates(latitude, longitude, areas):
     """Choose the smallest configured zone containing the coordinate."""
     matches = [

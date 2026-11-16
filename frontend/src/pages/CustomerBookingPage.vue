@@ -9,6 +9,7 @@ const route = useRoute()
 const router = useRouter()
 const service = ref(null)
 const selectedPackage = ref(null)
+const availablePackages = ref([])
 const profile = ref(null)
 const profileRequired = ref(false)
 const scheduledFor = ref('')
@@ -46,6 +47,11 @@ const resumeBookingId = computed(() => {
 })
 const bookingName = computed(() => selectedPackage.value?.name || service.value?.name || '')
 const bookingPrice = computed(() => selectedPackage.value?.package_price || service.value?.price || '')
+const relatedPackages = computed(() => (
+  availablePackages.value.filter(item => (
+    !selectedPackage.value && item.service_types.some(serviceType => serviceType.id === service.value?.id)
+  ))
+))
 
 const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
 
@@ -133,6 +139,7 @@ async function loadBookingPage() {
 
     service.value = servicesData.services.find((item) => item.id === Number(route.params.serviceId))
     if (!service.value) throw new Error('Service not found')
+    availablePackages.value = servicesData.service_packages || []
     const packageId = Number(route.query.package)
     if (Number.isInteger(packageId) && packageId > 0) {
       selectedPackage.value = (servicesData.service_packages || []).find((item) => item.id === packageId)
@@ -329,6 +336,13 @@ watch([serviceAddress, serviceCity, serviceState, servicePinCode], () => {
   }
 })
 
+watch(() => route.query.package, (value) => {
+  const packageId = Number(value)
+  selectedPackage.value = Number.isInteger(packageId) && packageId > 0
+    ? availablePackages.value.find(item => item.id === packageId) || null
+    : null
+})
+
 onMounted(loadBookingPage)
 onUnmounted(() => clearInterval(timerId))
 </script>
@@ -343,7 +357,7 @@ onUnmounted(() => clearInterval(timerId))
       <section v-if="service" class="booking-checkout">
         <div class="booking-checkout__intro">
           <p class="workbench-label">BOOKING REQUEST</p>
-          <h1>Tell us what<br />your home needs.</h1>
+          <h1>{{ selectedPackage ? 'Book your combo package' : 'Complete your booking' }}</h1>
           <ol>
             <li class="is-current"><span>01</span><div><strong>Service details</strong><small>Describe the problem</small></div></li>
             <li><span>02</span><div><strong>Professional match</strong><small>After you submit</small></div></li>
@@ -352,12 +366,20 @@ onUnmounted(() => clearInterval(timerId))
           <div class="booking-intro-summary">
             <small>YOU'RE BOOKING</small>
             <strong>{{ bookingName }}</strong>
-            <p>Share the location and problem details. We’ll handle the professional match and keep every update in My bookings.</p>
+            <p>{{ selectedPackage ? 'Each included service will be matched with the right professional.' : 'Confirm the location, schedule and service details.' }}</p>
           </div>
         </div>
 
         <form class="booking-form-panel" @submit.prevent="submitBooking">
+          <section v-if="relatedPackages.length" class="booking-combo-suggestion">
+            <div><span>COMBO AVAILABLE</span><strong>{{ relatedPackages[0].name }}</strong><p>Includes {{ relatedPackages[0].service_types.map(item => item.name).join(', ') }} for ₹{{ relatedPackages[0].package_price }}.</p></div>
+            <RouterLink :to="`/customer/book/${service.id}?package=${relatedPackages[0].id}`">Choose combo</RouterLink>
+          </section>
           <div class="booking-selected-service"><div><small>{{ selectedPackage ? 'SELECTED PACKAGE' : 'SELECTED SERVICE' }}</small><h2>{{ bookingName }}</h2><p v-if="selectedPackage">{{ selectedPackage.service_types.map(item => item.name).join(' + ') }}</p></div><strong>{{ bookingPrice ? `₹${bookingPrice}` : 'Price pending' }}</strong></div>
+          <section v-if="selectedPackage" class="booking-package-services">
+            <header><span>INCLUDED SERVICES</span><small>{{ selectedPackage.service_types.length }} matching professionals may be assigned</small></header>
+            <div><article v-for="item in selectedPackage.service_types" :key="item.id"><span>✓</span><div><strong>{{ item.name }}</strong><small>{{ item.description }}</small></div></article></div>
+          </section>
 
           <section v-if="profile" class="booking-contact-summary">
             <div><small>BOOKING CONTACT</small><strong>{{ profile.username }}</strong><p>{{ profile.phone_number }} · {{ profile.city }}</p></div>

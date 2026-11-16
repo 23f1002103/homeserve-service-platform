@@ -3,14 +3,14 @@
   min-height: 100vh;
   place-items: center;
   padding: 90px 20px 50px;
-  background: linear-gradient(145deg, #f7f4ed 0%, #e4eee7 100%);
+  background: radial-gradient(circle at 50% 10%, #e7ecff 0%, #f5f7fb 48%);
 }
 
 .auth-brand {
   position: absolute;
   top: 28px;
   left: max(24px, calc((100vw - 1180px) / 2));
-  color: #1f624b;
+  color: #3157d5;
   font-size: 1.2rem;
   font-weight: 850;
 }
@@ -18,10 +18,10 @@
 .auth-card {
   width: min(100%, 500px);
   padding: clamp(28px, 5vw, 48px);
-  border: 1px solid #dedbd2;
+  border: 1px solid #dce1eb;
   border-radius: 24px;
-  background: #fffdf8;
-  box-shadow: 0 24px 70px rgb(34 73 58 / 12%);
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(40 59 122 / 12%);
 }
 
 .auth-page--wide .auth-card {
@@ -45,7 +45,7 @@
 }
 
 .auth-card label {
-  color: #34483f;
+  color: #344057;
   font-size: 0.86rem;
   font-weight: 750;
 }
@@ -55,17 +55,17 @@
   width: 100%;
   min-height: 48px;
   padding: 0 14px;
-  border: 1px solid #cfd9d3;
+  border: 1px solid #d5dbe7;
   border-radius: 10px;
-  color: #17251f;
+  color: #172033;
   background: #fff;
   font: inherit;
 }
 
 .auth-card input:focus,
 .auth-card select:focus {
-  border-color: #1f624b;
-  outline: 3px solid rgb(31 98 75 / 13%);
+  border-color: #3157d5;
+  outline: 3px solid rgb(49 87 213 / 13%);
 }
 
 .auth-submit {
@@ -114,7 +114,7 @@
 }
 
 .auth-switch a {
-  color: #1f624b;
+  color: #3157d5;
   font-weight: 800;
 }
 

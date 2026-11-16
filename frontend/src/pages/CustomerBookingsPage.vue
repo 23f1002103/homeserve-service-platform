@@ -175,7 +175,7 @@ onMounted(loadBookings)
     <PageHeading eyebrow="Bookings" title="Your service timeline" description="Track status, professionals, payments and reviews." />
     <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
     <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
-    <section class="booking-overview-strip"><div><small>TOTAL ORDERS</small><strong>{{ bookings.length + packageOrders.length }}</strong></div><div><small>OPEN NOW</small><strong>{{ openBookingCount }}</strong></div><RouterLink to="/customer/services">Book another service →</RouterLink></section>
+    <section class="booking-overview-strip"><div><small>TOTAL ORDERS</small><strong>{{ bookings.length + packageOrders.length }}</strong></div><div><small>IN PROGRESS</small><strong>{{ openBookingCount }}</strong></div><RouterLink to="/customer/services">＋ New booking</RouterLink></section>
 
     <section v-if="packageOrders.length" class="package-order-section">
       <header><div><p class="workbench-label">SERVICE PACKAGES</p><h2>Combined orders</h2></div><p>Each service is matched with the right professional. The package completes when every job is done.</p></header>
@@ -203,12 +203,10 @@ onMounted(loadBookings)
     <section class="booking-compact-list">
       <article v-for="booking in paginatedBookings" :key="booking.id" :class="{ 'is-open': expandedBookingId === booking.id }">
         <button class="booking-compact-summary" type="button" @click="toggleBooking(booking.id)">
-          <span class="booking-compact-id"><code>#{{ String(booking.id).padStart(4, '0') }}</code><strong>{{ booking.service }}</strong></span>
-          <span><small>SCHEDULE</small><strong>{{ formatDate(booking.scheduled_for) }}</strong></span>
-          <span><small>PROFESSIONAL</small><strong>{{ booking.professional || 'Waiting for match' }}</strong></span>
-          <span><small>AMOUNT</small><strong>{{ booking.price ? `₹${booking.price}` : '—' }}</strong></span>
-          <span class="record-status" :class="`status-${booking.status}`">{{ statusLabel(booking.status) }}</span>
-          <b>{{ expandedBookingId === booking.id ? '−' : '+' }}</b>
+          <span class="booking-card-top"><code>#{{ String(booking.id).padStart(4, '0') }}</code><span class="record-status" :class="`status-${booking.status}`">{{ statusLabel(booking.status) }}</span></span>
+          <strong class="booking-card-title">{{ booking.service }}</strong>
+          <span class="booking-card-meta"><span><small>SCHEDULE</small><strong>{{ formatDate(booking.scheduled_for) }}</strong></span><span><small>PROFESSIONAL</small><strong>{{ booking.professional || 'Matching in progress' }}</strong></span></span>
+          <span class="booking-card-footer"><strong>{{ booking.price ? `₹${booking.price}` : '—' }}</strong><b>{{ expandedBookingId === booking.id ? 'Hide details' : 'View details' }} →</b></span>
         </button>
 
         <div v-if="expandedBookingId === booking.id" class="booking-compact-details">

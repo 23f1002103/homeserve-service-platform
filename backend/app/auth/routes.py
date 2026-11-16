@@ -35,6 +35,8 @@ def create_session_response(user, message="Login successful"):
     if user.role == "professional" and user.professional is not None:
         user.professional.active_service_area = None
         user.professional.location_verified_at = None
+        user.professional.current_latitude = None
+        user.professional.current_longitude = None
         db.session.commit()
 
     return {

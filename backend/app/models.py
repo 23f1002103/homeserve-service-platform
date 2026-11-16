@@ -93,6 +93,8 @@ class Professional(db.Model):
         nullable=True,
     )
     location_verified_at = db.Column(db.DateTime, nullable=True)
+    current_latitude = db.Column(db.Float, nullable=True)
+    current_longitude = db.Column(db.Float, nullable=True)
     active_service_area = db.relationship(
         "ServiceArea",
         back_populates="active_professionals",

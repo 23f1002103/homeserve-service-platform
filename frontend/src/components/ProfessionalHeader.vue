@@ -1,11 +1,13 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 defineProps({ current: { type: String, required: true } })
 const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const menuOpen = ref(false)
+let statusTimer
+let statusCheckRunning = false
 const links = [
   { name: 'Overview', path: '/professional/dashboard', key: 'overview' },
   { name: 'My jobs', path: '/professional/jobs', key: 'jobs' },
@@ -18,6 +20,52 @@ function logout() {
   sessionStorage.removeItem('professional_location_verified')
   router.push('/login')
 }
+
+function saveStatus(data) {
+  const savedUser = JSON.parse(localStorage.getItem('user') || '{}')
+  savedUser.approval_status = data.approval_status
+  savedUser.block_reason = data.block_reason || null
+  localStorage.setItem('user', JSON.stringify(savedUser))
+}
+
+async function checkAccountStatus() {
+  if (statusCheckRunning || document.visibilityState === 'hidden') return
+  statusCheckRunning = true
+  try {
+    const response = await fetch('/api/professional/status', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+    })
+    if (!response.ok) return
+    const data = await response.json()
+    saveStatus(data)
+    if (data.approval_status === 'blocked') {
+      sessionStorage.removeItem('professional_location_verified')
+      await router.replace('/professional/blocked')
+    } else if (data.approval_status === 'pending') {
+      sessionStorage.removeItem('professional_location_verified')
+      await router.replace('/professional/pending')
+    }
+  } finally {
+    statusCheckRunning = false
+  }
+}
+
+function checkWhenVisible() {
+  if (document.visibilityState === 'visible') checkAccountStatus()
+}
+
+onMounted(() => {
+  checkAccountStatus()
+  statusTimer = window.setInterval(checkAccountStatus, 10000)
+  window.addEventListener('focus', checkAccountStatus)
+  document.addEventListener('visibilitychange', checkWhenVisible)
+})
+
+onUnmounted(() => {
+  window.clearInterval(statusTimer)
+  window.removeEventListener('focus', checkAccountStatus)
+  document.removeEventListener('visibilitychange', checkWhenVisible)
+})
 </script>
 
 <template>

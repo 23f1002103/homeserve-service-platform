@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CustomerHeader from '../components/CustomerHeader.vue'
+import { statusLabel } from '../utils/status'
 
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const dashboard = ref(null)
@@ -12,6 +13,7 @@ let refreshTimer
 
 const activeBookings = computed(() => dashboard.value?.active_bookings || (dashboard.value?.active_booking ? [dashboard.value.active_booking] : []))
 const activeBooking = computed(() => activeBookings.value[activeBookingIndex.value] || null)
+const activePackageOrders = computed(() => dashboard.value?.active_package_orders || [])
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'Schedule pending'
@@ -60,20 +62,34 @@ onUnmounted(() => clearInterval(refreshTimer))
 <template>
   <div class="workbench customer-workbench">
     <CustomerHeader current="overview" />
-    <main class="workbench-content customer-content">
-      <section class="customer-hero compact-customer-hero">
-        <div class="customer-hero__copy"><p class="workbench-label">WELCOME HOME, {{ user.username || 'CUSTOMER' }}</p><h1>What needs a little<br /><em>care</em> today?</h1><p>Choose a service and keep every home-care request organised.</p><RouterLink class="customer-primary-action" to="/customer/services">Browse services <span>↘</span></RouterLink></div>
-        <div v-if="dashboard" class="customer-glance"><small>YOUR HOME DESK</small><strong>{{ dashboard.open_bookings }}</strong><span>open bookings</span><p>{{ dashboard.completed_bookings }} completed · {{ dashboard.city }}</p></div>
+    <main class="workbench-content customer-content customer-app-home">
+      <section class="customer-app-welcome">
+        <div><span>HomeServe customer</span><h1>Hello, {{ user.username || 'Customer' }}</h1><p>Book trusted help and follow every visit from one place.</p></div>
+        <RouterLink to="/customer/services"><span>＋</span> Book a service</RouterLink>
       </section>
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
-      <div v-else-if="!dashboard" class="dashboard-loading">Preparing your home-care desk…</div>
+      <div v-else-if="!dashboard" class="dashboard-loading">Loading your dashboard…</div>
+      <section v-if="dashboard" class="customer-app-summary">
+        <div><strong>{{ dashboard.open_bookings }}</strong><span>Open orders</span></div>
+        <i></i>
+        <div><strong>{{ dashboard.completed_bookings }}</strong><span>Completed</span></div>
+        <i></i>
+        <div class="summary-location"><strong>{{ dashboard.city || 'Not added' }}</strong><span>Service city</span></div>
+      </section>
       <RouterLink v-if="profileIncomplete" class="profile-reminder" to="/customer/profile?complete=1">
-        <span>ONE-TIME SETUP</span>
-        <div><strong>Finish your home profile when you’re ready.</strong><small>Add a phone number and address now for a faster booking later.</small></div>
+        <span>PROFILE</span>
+        <div><strong>Complete your contact and address details</strong><small>Required before your first booking.</small></div>
         <b>Complete profile →</b>
       </RouterLink>
+      <section v-if="activePackageOrders.length" class="dashboard-package-orders">
+        <header><div><span>COMBO ORDERS</span><h2>Services working together</h2></div><RouterLink to="/customer/bookings">View all orders →</RouterLink></header>
+        <article v-for="order in activePackageOrders" :key="order.id">
+          <div class="dashboard-package-title"><span>PKG-{{ String(order.id).padStart(4, '0') }}</span><h3>{{ order.name }}</h3><small>{{ statusLabel(order.status) }}</small></div>
+          <ol><li v-for="service in order.services" :key="service.name"><i :class="`is-${service.status}`">{{ service.status === 'completed' ? '✓' : service.status === 'accepted' ? '●' : '○' }}</i><div><strong>{{ service.name }}</strong><small>{{ service.professional || statusLabel(service.status) }}</small></div></li></ol>
+        </article>
+      </section>
       <section v-if="activeBooking" class="active-booking-tracker" @touchstart.passive="beginBookingSwipe" @touchend.passive="finishBookingSwipe">
-        <header><div><p class="workbench-label">ACTIVE BOOKING · #{{ String(activeBooking.id).padStart(4, '0') }}</p><h2>{{ activeBooking.service }}</h2></div><div class="tracker-header-actions"><div v-if="activeBookings.length > 1" class="tracker-pagination" aria-label="Choose active booking"><button type="button" aria-label="Previous active booking" @click="showBooking(-1)">←</button><span>{{ activeBookingIndex + 1 }} / {{ activeBookings.length }}</span><button type="button" aria-label="Next active booking" @click="showBooking(1)">→</button></div><RouterLink to="/customer/bookings">View booking →</RouterLink></div></header>
+        <header><div><p class="workbench-label">ACTIVE BOOKING · #{{ String(activeBooking.id).padStart(4, '0') }}</p><h2>{{ activeBooking.service }}</h2></div><div class="tracker-header-actions"><div v-if="activeBookings.length > 1" class="tracker-pagination" aria-label="Choose active booking"><button type="button" aria-label="Previous active booking" @click="showBooking(-1)">←</button><span>{{ activeBookingIndex + 1 }} / {{ activeBookings.length }}</span><button type="button" aria-label="Next active booking" @click="showBooking(1)">→</button></div><RouterLink to="/customer/bookings">Open details</RouterLink></div></header>
         <div class="active-booking-summary">
           <div><small>CURRENT UPDATE</small><strong>{{ activeBooking.status === 'accepted' ? 'Your professional is assigned' : 'Finding the right professional' }}</strong><p>{{ activeBooking.status === 'accepted' ? `Scheduled for ${formatDate(activeBooking.scheduled_for)}` : 'HomeServe professionals in your area can now accept this request.' }}</p></div>
           <div v-if="activeBooking.professional" class="tracker-professional"><span><img v-if="activeBooking.professional.profile_image_url" :src="activeBooking.professional.profile_image_url" :alt="activeBooking.professional.name" /><template v-else>{{ activeBooking.professional.name.charAt(0).toUpperCase() }}</template></span><div><small>ASSIGNED PROFESSIONAL</small><strong>{{ activeBooking.professional.name }}</strong></div></div>
@@ -83,9 +99,10 @@ onUnmounted(() => clearInterval(refreshTimer))
         </ol>
         <p class="tracker-refresh-note">{{ activeBookings.length > 1 ? 'Swipe or use the arrows to see every active booking. ' : '' }}Status refreshes automatically every 30 seconds.</p>
       </section>
-      <section class="role-page-links customer-page-links">
-        <RouterLink to="/customer/services"><span>01</span><div><strong>Explore services</strong><small>Find the right help for your home</small></div><b>→</b></RouterLink>
-        <RouterLink to="/customer/bookings"><span>02</span><div><strong>My bookings</strong><small>Track current and previous requests</small></div><b>→</b></RouterLink>
+      <section class="customer-quick-actions">
+        <RouterLink to="/customer/services"><span>⌕</span><div><strong>Browse services</strong><small>Services and combo packages</small></div><b>→</b></RouterLink>
+        <RouterLink to="/customer/bookings"><span>▤</span><div><strong>Orders</strong><small>Track visits, payments and reviews</small></div><b>→</b></RouterLink>
+        <RouterLink to="/customer/profile"><span>♙</span><div><strong>Profile</strong><small>Contact and service address</small></div><b>→</b></RouterLink>
       </section>
     </main>
   </div>

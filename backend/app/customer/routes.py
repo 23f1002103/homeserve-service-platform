@@ -124,6 +124,14 @@ def dashboard():
     serialized_active_bookings = [
         serialize_active_booking(booking) for booking in active_bookings
     ]
+    active_package_orders = db.session.scalars(
+        db.select(PackageOrder)
+        .where(
+            PackageOrder.customer_id == profile.id,
+            PackageOrder.status.notin_(["completed", "cancelled"]),
+        )
+        .order_by(PackageOrder.created_at.desc())
+    ).all()
 
     return {
         "city": profile.city,
@@ -133,6 +141,26 @@ def dashboard():
         "active_booking": (
             serialized_active_bookings[0] if serialized_active_bookings else None
         ),
+        "active_package_orders": [
+            {
+                "id": order.id,
+                "name": order.service_package.name,
+                "status": order.status,
+                "services": [
+                    {
+                        "name": job.service_type.name,
+                        "status": job.status,
+                        "professional": (
+                            job.professional.user.username
+                            if job.professional
+                            else None
+                        ),
+                    }
+                    for job in order.jobs
+                ],
+            }
+            for order in active_package_orders
+        ],
     }, 200
 
 
@@ -943,7 +971,7 @@ def bookings():
                 ),
             }
             for booking in booking_list
-            if booking.package_order_id is None
+            if booking.service_package_id is None
         ]
     }, 200
 

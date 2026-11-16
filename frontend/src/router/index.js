@@ -175,7 +175,7 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth) return true
 
   const token = localStorage.getItem('access_token')
@@ -187,6 +187,32 @@ router.beforeEach((to) => {
     return { name: 'login', query: { expired: '1' } }
   }
   if (to.meta.role && user.role !== to.meta.role) return '/'
+  if (
+    user.role === 'professional'
+    && !['professional-pending', 'professional-blocked'].includes(to.name)
+  ) {
+    try {
+      const response = await fetch('/api/professional/status', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (response.ok) {
+        const status = await response.json()
+        user.approval_status = status.approval_status
+        user.block_reason = status.block_reason || null
+        localStorage.setItem('user', JSON.stringify(user))
+        if (status.approval_status === 'blocked') {
+          sessionStorage.removeItem('professional_location_verified')
+          return { name: 'professional-blocked' }
+        }
+        if (status.approval_status === 'pending') {
+          sessionStorage.removeItem('professional_location_verified')
+          return { name: 'professional-pending' }
+        }
+      }
+    } catch {
+      // Individual pages still handle temporary API failures.
+    }
+  }
   if (
     user.role === 'professional'
     && user.approval_status === 'approved'

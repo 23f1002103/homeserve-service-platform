@@ -278,6 +278,15 @@ class CustomerDashboardTestCase(unittest.TestCase):
             orders_response.get_json()["package_orders"][0]["name"],
             "Home Refresh Combo",
         )
+        dashboard_response = self.client.get(
+            "/api/customer/dashboard",
+            headers={"Authorization": f"Bearer {self.token}"},
+        )
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertEqual(
+            dashboard_response.get_json()["active_package_orders"][0]["name"],
+            "Home Refresh Combo",
+        )
         order_id = orders_response.get_json()["package_orders"][0]["id"]
         invoice_response = self.client.get(
             f"/api/customer/package-orders/{order_id}/invoice",

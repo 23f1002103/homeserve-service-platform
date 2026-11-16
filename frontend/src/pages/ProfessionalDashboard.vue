@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
+import AvailableJobCard from '../components/AvailableJobCard.vue'
 
 const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -15,10 +16,6 @@ const todayLabel = new Intl.DateTimeFormat('en-IN', {
   day: 'numeric',
   month: 'long',
 }).format(new Date())
-const formatDate = (value) => value
-  ? new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-  : 'Not scheduled'
-
 async function loadDashboard() {
   try {
     const response = await fetch('/api/professional/dashboard', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
@@ -41,7 +38,7 @@ onMounted(loadDashboard)
       <section class="professional-intro">
         <div>
           <p class="workbench-label">{{ todayLabel }}</p>
-          <h1>{{ greeting }},<br /><span>{{ displayName }}.</span></h1>
+          <h1>{{ greeting }}, <span>{{ displayName }}.</span></h1>
           <p class="professional-intro__copy">Here is today’s work, schedule and earnings at a glance.</p>
         </div>
       </section>
@@ -49,8 +46,11 @@ onMounted(loadDashboard)
       <div v-else-if="!dashboard" class="dashboard-loading">Preparing your field desk…</div>
       <template v-else>
         <section class="professional-current-area">
-          <div><span aria-hidden="true">⌖</span><p><small>CURRENT WORK LOCATION</small><strong>{{ dashboard.current_area.city }}, {{ dashboard.current_area.state }}</strong></p></div>
-          <RouterLink to="/professional/location">Detect again</RouterLink>
+          <div class="professional-location-copy">
+            <span class="professional-location-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
+            <p><small>CURRENT WORK LOCATION</small><strong>{{ dashboard.current_area.city }}, {{ dashboard.current_area.state }}</strong></p>
+          </div>
+          <div class="professional-location-actions"><span><i></i> GPS verified</span><RouterLink to="/professional/location">Detect again</RouterLink></div>
         </section>
         <section class="professional-summary">
           <article class="trade-card"><span>YOUR TRADE</span><strong>{{ dashboard.service }}</strong><small>{{ dashboard.city }}</small></article>
@@ -64,11 +64,7 @@ onMounted(loadDashboard)
             <RouterLink to="/professional/jobs">View all {{ dashboard.available_job_count }} →</RouterLink>
           </header>
           <div v-if="dashboard.available_jobs.length" class="available-job-list dashboard-job-preview">
-            <article v-for="job in dashboard.available_jobs" :key="job.id">
-              <header><code>#{{ String(job.id).padStart(4, '0') }}</code><span>{{ job.area }}</span></header>
-              <div><p class="workbench-label">{{ job.service }}</p><h2>{{ job.description }}</h2></div>
-              <footer><time>{{ formatDate(job.scheduled_for) }}</time><strong>{{ job.price ? `₹${job.price}` : 'Price unavailable' }}</strong><RouterLink to="/professional/jobs">Open job</RouterLink></footer>
-            </article>
+            <AvailableJobCard v-for="job in dashboard.available_jobs" :key="job.id" :job="job" preview />
           </div>
           <div v-else class="empty-job-sheet"><span></span><div><h3>No matching requests right now.</h3><p>New paid bookings matching your trade and current GPS city will appear here.</p></div></div>
         </section>
