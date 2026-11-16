@@ -241,7 +241,9 @@ class RegistrationTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
 
     @patch("app.auth.routes.verify_google_token")
-    def test_google_does_not_silently_link_password_account(self, verify_token):
+    def test_google_links_existing_password_customer_by_verified_email(
+        self, verify_token
+    ):
         self.client.post(
             "/api/auth/register",
             json={
@@ -263,6 +265,60 @@ class RegistrationTestCase(unittest.TestCase):
             "name": "Password Customer",
         }
 
+        first = self.client.post(
+            "/api/auth/google",
+            json={"credential": "verified-by-mock"},
+        )
+        second = self.client.post(
+            "/api/auth/google",
+            json={"credential": "verified-by-mock-again"},
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertIn("access_token", first.get_json())
+        self.assertFalse(first.get_json()["is_new_user"])
+        self.assertEqual(second.status_code, 200)
+        with self.app.app_context():
+            user = db.session.scalar(
+                db.select(User).where(User.email == "password.customer@example.com")
+            )
+            self.assertEqual(user.google_subject, "different-google-subject")
+            self.assertTrue(check_password_hash(user.password_hash, "Password123"))
+            count = db.session.scalar(db.select(db.func.count(User.id)))
+            self.assertEqual(count, 1)
+
+    @patch("app.auth.routes.verify_google_token")
+    def test_google_rejects_email_linked_to_another_google_subject(
+        self, verify_token
+    ):
+        with self.app.app_context():
+            user = User(
+                username="linked-customer",
+                email="linked.customer@example.com",
+                password_hash="unused",
+                google_subject="original-google-subject",
+                role="customer",
+            )
+            db.session.add(user)
+            db.session.flush()
+            db.session.add(
+                Customer(
+                    user_id=user.id,
+                    address="",
+                    city="",
+                    state="",
+                    pinCode="",
+                )
+            )
+            db.session.commit()
+
+        verify_token.return_value = {
+            "sub": "different-google-subject",
+            "email": "linked.customer@example.com",
+            "email_verified": True,
+            "name": "Linked Customer",
+        }
+
         response = self.client.post(
             "/api/auth/google",
             json={"credential": "verified-by-mock"},
@@ -271,9 +327,9 @@ class RegistrationTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         with self.app.app_context():
             user = db.session.scalar(
-                db.select(User).where(User.email == "password.customer@example.com")
+                db.select(User).where(User.email == "linked.customer@example.com")
             )
-            self.assertIsNone(user.google_subject)
+            self.assertEqual(user.google_subject, "original-google-subject")
 
 
 if __name__ == "__main__":

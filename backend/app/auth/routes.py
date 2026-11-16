@@ -246,12 +246,14 @@ def google_login():
                 return {
                     "message": "Google sign-in is available only for customer accounts"
                 }, 409
-            return {
-                "message": (
-                    "An account with this email already exists. "
-                    "Sign in with its password."
-                )
-            }, 409
+            if user.google_subject is not None:
+                return {
+                    "message": "This email is connected to another Google account"
+                }, 409
+
+            # Google has verified ownership of this email address, so an
+            # existing password-based customer can safely add Google sign-in.
+            user.google_subject = google_subject
         else:
             user = User(
                 username=available_google_username(identity.get("name"), email),
