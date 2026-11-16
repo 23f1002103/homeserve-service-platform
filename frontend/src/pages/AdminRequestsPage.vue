@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import PageHeading from '../components/PageHeading.vue'
 import ListPagination from '../components/ListPagination.vue'
 import { usePagination } from '../utils/pagination'
 import { statusLabel } from '../utils/status'
@@ -41,7 +42,7 @@ onMounted(loadRequests)
   <div class="workbench admin-workbench">
     <AdminHeader current="requests" />
     <main class="workbench-content admin-section-page">
-      <header class="section-page-heading"><div><p class="workbench-label">OPERATIONS / REQUESTS</p><h1>Follow every job<br />from request to finish.</h1></div><p>Track customer bookings, assigned professionals and current status.</p></header>
+      <PageHeading variant="admin" eyebrow="Requests" title="Service requests" description="Track bookings, assignments and current status." />
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <div class="list-toolbar"><div class="admin-filters"><button v-for="option in ['all', 'pending', 'accepted', 'completed', 'cancelled']" :key="option" :class="{ active: filter === option }" @click="filter = option">{{ option === 'all' ? 'All' : statusLabel(option) }}</button></div><label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search ID, service or person" aria-label="Search requests" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label></div>
       <section class="request-records">

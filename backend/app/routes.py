@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from flask import Blueprint, jsonify
 
 from .database import db
-from .models import ServiceType
+from .models import ServicePackage, ServiceType
 
 
 api = Blueprint("api", __name__)
@@ -30,6 +30,13 @@ def landing_page():
     services = db.session.scalars(
         db.select(ServiceType).order_by(ServiceType.name)
     ).all()
+    packages = db.session.scalars(
+        db.select(ServicePackage)
+        .where(ServicePackage.is_active.is_(True))
+        .order_by(ServicePackage.created_at.desc())
+        .limit(3)
+    ).all()
+    packages = [package for package in packages if len(package.service_types) >= 2]
 
     return jsonify(
         {
@@ -53,6 +60,20 @@ def landing_page():
                     ),
                 }
                 for service in services
+            ],
+            "service_packages": [
+                {
+                    "id": package.id,
+                    "service_types": [
+                        {"id": service.id, "name": service.name, "description": service.description}
+                        for service in package.service_types
+                    ],
+                    "name": package.name,
+                    "description": package.description,
+                    "regular_price": str(package.regular_price),
+                    "package_price": str(package.package_price),
+                }
+                for package in packages
             ],
             "highlights": [
                 {

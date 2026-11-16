@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
+import PageHeading from '../components/PageHeading.vue'
 
 const profile = ref(null)
 const reviews = ref([])
@@ -109,7 +110,7 @@ onMounted(loadProfile)
 
 <template>
   <div class="workbench professional-workbench"><ProfessionalHeader current="profile" /><main class="workbench-content role-section-page">
-    <header class="role-section-heading"><div><p class="workbench-label">WORK PROFILE</p><h1>Your professional<br />identity.</h1></div><p>This information helps HomeServe match you with suitable service requests.</p></header>
+    <PageHeading eyebrow="Profile" title="Professional profile" description="Manage the information used for service matching." />
     <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
     <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
     <section v-if="profile" class="detail-sheet professional-detail-sheet">

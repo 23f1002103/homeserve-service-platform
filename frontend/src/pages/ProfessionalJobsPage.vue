@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import ListPagination from '../components/ListPagination.vue'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
+import PageHeading from '../components/PageHeading.vue'
 import { usePagination } from '../utils/pagination'
 import { statusLabel } from '../utils/status'
 
@@ -77,7 +78,7 @@ onMounted(loadJobs)
 
 <template>
   <div class="workbench professional-workbench"><ProfessionalHeader current="jobs" /><main class="workbench-content role-section-page">
-    <header class="role-section-heading"><div><p class="workbench-label">JOB BOARD</p><h1>Available work<br />and your jobs.</h1></div><p>New requests appear only when their service and location match your professional profile.</p></header>
+    <PageHeading eyebrow="Jobs" title="Available and assigned work" description="Requests shown here match your service type and current area." />
     <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
     <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
 

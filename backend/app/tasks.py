@@ -16,7 +16,7 @@ def booking_email_details(booking):
         "professional_name": (
             booking.professional.user.username if booking.professional else None
         ),
-        "service_name": booking.service_type.name,
+        "service_name": booking.service_name,
         "amount": str(payment.amount) if payment else None,
     }
 

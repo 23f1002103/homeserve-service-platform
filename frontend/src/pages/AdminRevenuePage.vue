@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import PageHeading from '../components/PageHeading.vue'
 import ListPagination from '../components/ListPagination.vue'
 import { usePagination } from '../utils/pagination'
 
@@ -78,7 +79,7 @@ onMounted(loadRevenue)
   <div class="workbench admin-workbench">
     <AdminHeader current="revenue" />
     <main class="workbench-content admin-section-page revenue-page">
-      <header class="section-page-heading"><div><p class="workbench-label">FINANCE / REVENUE</p><h1>Follow the value<br />behind every job.</h1></div><p>See all-time platform revenue, then choose a date range for a focused transaction report.</p></header>
+      <PageHeading variant="admin" eyebrow="Revenue" title="Platform revenue" description="Review all-time totals or filter completed transactions by date." />
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
 
       <form class="revenue-range-control" @submit.prevent="loadRevenue">

@@ -8,6 +8,7 @@ import demoQrImage from '../assets/demo-payment-qr.svg'
 const route = useRoute()
 const router = useRouter()
 const service = ref(null)
+const selectedPackage = ref(null)
 const profile = ref(null)
 const profileRequired = ref(false)
 const scheduledFor = ref('')
@@ -43,6 +44,8 @@ const resumeBookingId = computed(() => {
   const value = Number(route.query.resume)
   return Number.isInteger(value) && value > 0 ? value : null
 })
+const bookingName = computed(() => selectedPackage.value?.name || service.value?.name || '')
+const bookingPrice = computed(() => selectedPackage.value?.package_price || service.value?.price || '')
 
 const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
 
@@ -130,6 +133,11 @@ async function loadBookingPage() {
 
     service.value = servicesData.services.find((item) => item.id === Number(route.params.serviceId))
     if (!service.value) throw new Error('Service not found')
+    const packageId = Number(route.query.package)
+    if (Number.isInteger(packageId) && packageId > 0) {
+      selectedPackage.value = (servicesData.service_packages || []).find((item) => item.id === packageId)
+      if (!selectedPackage.value || !selectedPackage.value.service_types.some(item => item.id === service.value.id)) throw new Error('Service package not found')
+    }
     serviceAreaAvailable.value = servicesData.service_area_available
     profile.value = profileData.profile
     if (profile.value.profile_complete === false) {
@@ -283,6 +291,7 @@ async function submitBooking() {
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         service_type_id: service.value.id,
+        service_package_id: selectedPackage.value?.id || null,
         scheduled_for: scheduledFor.value,
         service_address: serviceAddress.value,
         service_pin_code: servicePinCode.value,
@@ -342,13 +351,13 @@ onUnmounted(() => clearInterval(timerId))
           </ol>
           <div class="booking-intro-summary">
             <small>YOU'RE BOOKING</small>
-            <strong>{{ service.name }}</strong>
+            <strong>{{ bookingName }}</strong>
             <p>Share the location and problem details. We’ll handle the professional match and keep every update in My bookings.</p>
           </div>
         </div>
 
         <form class="booking-form-panel" @submit.prevent="submitBooking">
-          <div class="booking-selected-service"><div><small>SELECTED SERVICE</small><h2>{{ service.name }}</h2></div><strong>{{ service.price ? `₹${service.price}` : 'Price pending' }}</strong></div>
+          <div class="booking-selected-service"><div><small>{{ selectedPackage ? 'SELECTED PACKAGE' : 'SELECTED SERVICE' }}</small><h2>{{ bookingName }}</h2><p v-if="selectedPackage">{{ selectedPackage.service_types.map(item => item.name).join(' + ') }}</p></div><strong>{{ bookingPrice ? `₹${bookingPrice}` : 'Price pending' }}</strong></div>
 
           <section v-if="profile" class="booking-contact-summary">
             <div><small>BOOKING CONTACT</small><strong>{{ profile.username }}</strong><p>{{ profile.phone_number }} · {{ profile.city }}</p></div>
@@ -395,10 +404,10 @@ onUnmounted(() => clearInterval(timerId))
           </section>
           <label>What is the problem?<textarea v-model.trim="description" rows="5" maxlength="1000" placeholder="Example: The kitchen tap has been leaking since yesterday…" required></textarea><small>{{ description.length }}/1000</small></label>
 
-          <div class="booking-price-note"><span>Base service price</span><strong>{{ service.price ? `₹${service.price}` : 'Not set' }}</strong><p>Final cost may change only if extra work or materials are approved by you.</p></div>
+          <div class="booking-price-note"><span>{{ selectedPackage ? 'Package price' : 'Base service price' }}</span><strong>{{ bookingPrice ? `₹${bookingPrice}` : 'Not set' }}</strong><p v-if="selectedPackage">You save ₹{{ (Number(selectedPackage.regular_price) - Number(selectedPackage.package_price)).toFixed(2) }} on this bundle.</p><p v-else>Final cost may change only if extra work or materials are approved by you.</p></div>
 
           <section class="demo-payment-note"><span>DEMO MODE</span><div><strong>HomeServe payment simulator</strong><p>Experience a UPI-style checkout without using real money or banking details.</p></div></section>
-          <button class="booking-submit" type="submit" :disabled="submitting || !service.price || !matchedServiceArea">{{ submitting ? 'Preparing payment…' : matchedServiceArea ? `Continue to demo payment · ₹${service.price}` : 'Verify location to continue' }}</button>
+          <button class="booking-submit" type="submit" :disabled="submitting || !bookingPrice || !matchedServiceArea">{{ submitting ? 'Preparing payment…' : matchedServiceArea ? `Continue to demo payment · ₹${bookingPrice}` : 'Verify location to continue' }}</button>
         </form>
       </section>
 
@@ -408,7 +417,7 @@ onUnmounted(() => clearInterval(timerId))
             <div class="gateway-checkout-shell">
               <aside class="gateway-order-summary">
                 <div class="gateway-brand"><span>HS</span><div><strong>HomeServe</strong><small>Secure Checkout</small></div></div>
-                <div class="gateway-order-copy"><small>PAYMENT FOR</small><strong>{{ service?.name || 'Home service' }}</strong><span>Booking #{{ bookingId }}</span></div>
+                <div class="gateway-order-copy"><small>PAYMENT FOR</small><strong>{{ bookingName || 'Home service' }}</strong><span>Booking #{{ bookingId }}</span></div>
                 <div class="gateway-amount"><small>AMOUNT PAYABLE</small><strong><sup>₹</sup>{{ demoPayment.amount }}</strong></div>
                 <dl><div><dt>Order ID</dt><dd>{{ demoPayment.order_id }}</dd></div><div><dt>Customer</dt><dd>{{ profile?.username }}</dd></div></dl>
                 <div class="gateway-secure-note"><span>⌾</span><div><strong>Secured checkout</strong><small>256-bit style payment experience</small></div></div>

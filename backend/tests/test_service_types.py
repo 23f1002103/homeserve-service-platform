@@ -4,7 +4,7 @@ from flask_jwt_extended import create_access_token
 
 from app import create_app
 from app.database import db
-from app.models import Professional, ServicePricing, ServiceType, User
+from app.models import Professional, ServicePackage, ServicePricing, ServiceType, User
 
 
 class ServiceTypeTestCase(unittest.TestCase):
@@ -72,6 +72,72 @@ class ServiceTypeTestCase(unittest.TestCase):
         response = self.client.post("/api/admin/service-types", json={"name": "cleaning"}, headers=headers)
 
         self.assertEqual(response.status_code, 409)
+
+    def test_admin_creates_and_deactivates_service_package(self):
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        service = self.client.post(
+            "/api/admin/service-types",
+            json={"name": "Plumbing", "base_price": "399"},
+            headers=headers,
+        ).get_json()["service_type"]
+        cleaning = self.client.post(
+            "/api/admin/service-types",
+            json={"name": "Cleaning", "base_price": "600"},
+            headers=headers,
+        ).get_json()["service_type"]
+
+        created = self.client.post(
+            "/api/admin/service-packages",
+            json={
+                "name": "Complete Plumbing Care",
+                "description": "Three preventive plumbing tasks in one visit.",
+                "service_type_ids": [service["id"], cleaning["id"]],
+                "package_price": "799",
+            },
+            headers=headers,
+        )
+
+        self.assertEqual(created.status_code, 201)
+        package = created.get_json()["service_package"]
+        self.assertEqual(package["package_price"], "799.00")
+        self.assertTrue(package["is_active"])
+        landing = self.client.get("/api/landing").get_json()
+        self.assertEqual(landing["service_packages"][0]["name"], package["name"])
+
+        updated = self.client.patch(
+            f"/api/admin/service-packages/{package['id']}",
+            json={"is_active": False},
+            headers=headers,
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(self.client.get("/api/landing").get_json()["service_packages"], [])
+        with self.app.app_context():
+            self.assertFalse(db.session.get(ServicePackage, package["id"]).is_active)
+
+    def test_package_price_must_be_lower_than_regular_total(self):
+        headers = {"Authorization": f"Bearer {self.admin_token}"}
+        service_id = self.client.post(
+            "/api/admin/service-types",
+            json={"name": "Cleaning", "base_price": "500"},
+            headers=headers,
+        ).get_json()["service_type"]["id"]
+        second_service_id = self.client.post(
+            "/api/admin/service-types",
+            json={"name": "Plumbing", "base_price": "400"},
+            headers=headers,
+        ).get_json()["service_type"]["id"]
+
+        response = self.client.post(
+            "/api/admin/service-packages",
+            json={
+                "name": "Invalid Deal",
+                "service_type_ids": [service_id, second_service_id],
+                "package_price": "1000",
+            },
+            headers=headers,
+        )
+
+        self.assertEqual(response.status_code, 400)
 
     def test_admin_can_delete_an_unused_service(self):
         headers = {"Authorization": f"Bearer {self.admin_token}"}

@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import ProfessionalHeader from '../components/ProfessionalHeader.vue'
+import PageHeading from '../components/PageHeading.vue'
 
 const earnings = ref(null)
 const selectedWeek = ref('')
@@ -41,7 +42,7 @@ onMounted(loadEarnings)
   <div class="workbench professional-workbench">
     <ProfessionalHeader current="earnings" />
     <main class="workbench-content role-section-page earnings-page">
-      <header class="role-section-heading"><div><p class="workbench-label">EARNINGS LEDGER</p><h1>One week<br />at a time.</h1></div><p>Select any week to see only its completed services and your payout share.</p></header>
+      <PageHeading eyebrow="Earnings" title="Weekly earnings" description="Review completed services and your payout share." />
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
 
       <section class="earnings-week-control">

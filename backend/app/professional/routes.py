@@ -109,7 +109,7 @@ def available_jobs_for(profile, has_active_job=False):
 def serialize_available_job(job):
     return {
         "id": job.id,
-        "service": job.service_type.name,
+        "service": job.service_name,
         "area": (
             f"{job.service_area.city}, {job.service_area.state}"
             if job.service_area
@@ -201,7 +201,7 @@ def jobs():
         "jobs": [
             {
                 "id": job.id,
-                "service": job.service_type.name,
+                "service": job.service_name,
                 "customer": (
                     job.recipient_name
                     if job.booking_for == "other"
@@ -273,12 +273,14 @@ def accept_job(job_id):
 
     job.professional_id = profile.id
     job.status = "accepted"
+    if job.package_order:
+        job.package_order.refresh_status()
     db.session.add(
         Notification(
             user_id=job.customer.user_id,
             message=(
                 f"{profile.user.username} accepted your "
-                f"{job.service_type.name} booking #{job.id}."
+                f"{job.service_name} booking #{job.id}."
             ),
         )
     )
@@ -305,6 +307,18 @@ def complete_job(job_id):
 
     job.status = "completed"
     job.completed_at = datetime.now()
+    if job.package_order:
+        job.package_order.refresh_status()
+        if job.package_order.status == "completed":
+            db.session.add(
+                Notification(
+                    user_id=job.customer.user_id,
+                    message=(
+                        f"Every service in {job.package_order.service_package.name} "
+                        "is now complete."
+                    ),
+                )
+            )
     db.session.commit()
     enqueue_task(send_booking_completed, job.id)
     return {"message": "Job marked as completed"}, 200
@@ -346,7 +360,7 @@ def earnings():
         "completed_jobs": [
             {
                 "id": job.id,
-                "service": job.service_type.name,
+                "service": job.service_name,
                 "customer": job.customer.user.username,
                 "completed_at": job.completed_at.isoformat(),
                 "gross_amount": str(job.payments[0].amount),
@@ -406,7 +420,7 @@ def profile():
         "reviews": [
             {
                 "booking_id": review.service_request_id,
-                "service": review.service_request.service_type.name,
+                "service": review.service_request.service_name,
                 "rating": review.rating,
                 "comment": review.comment,
                 "completed_at": (

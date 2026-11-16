@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import PageHeading from '../components/PageHeading.vue'
 import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import ListPagination from '../components/ListPagination.vue'
 import { usePagination } from '../utils/pagination'
@@ -68,7 +69,7 @@ onMounted(loadProfessionals)
   <div class="workbench admin-workbench">
     <AdminHeader current="professionals" />
     <main class="workbench-content admin-section-page">
-      <header class="section-page-heading"><div><p class="workbench-label">PEOPLE / PROFESSIONALS</p><h1>Review the people<br />behind the work.</h1></div><p>Approve applications and monitor professional account status.</p></header>
+      <PageHeading variant="admin" eyebrow="Professionals" title="Professional accounts" description="Review applications and manage account status." />
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
       <div class="list-toolbar"><div class="admin-filters"><button v-for="option in ['all', 'pending', 'approved', 'blocked']" :key="option" :class="{ active: filter === option }" @click="filter = option">{{ option }}</button></div><label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search name, service or city" aria-label="Search professionals" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label></div>

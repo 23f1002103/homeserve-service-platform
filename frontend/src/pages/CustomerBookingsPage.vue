@@ -2,10 +2,12 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import CustomerHeader from '../components/CustomerHeader.vue'
+import PageHeading from '../components/PageHeading.vue'
 import ListPagination from '../components/ListPagination.vue'
 import { usePagination } from '../utils/pagination'
 import { statusLabel } from '../utils/status'
 const bookings = ref([])
+const packageOrders = ref([])
 const filter = ref('all')
 const searchQuery = ref('')
 const errorMessage = ref('')
@@ -18,6 +20,7 @@ const submittingReview = ref(false)
 const cancellingBookingId = ref(null)
 const downloadingInvoiceId = ref(null)
 const pendingCancelBooking = ref(null)
+const pendingCancelPackage = ref(null)
 const visibleBookings = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   return bookings.value.filter(item => {
@@ -28,7 +31,10 @@ const visibleBookings = computed(() => {
 })
 const { currentPage, pageCount, paginatedItems: paginatedBookings, resetPage } = usePagination(visibleBookings, 8)
 watch([filter, searchQuery], () => { resetPage(); expandedBookingId.value = null })
-const openBookingCount = computed(() => bookings.value.filter(item => ['pending', 'accepted'].includes(item.status)).length)
+const openBookingCount = computed(() => (
+  bookings.value.filter(item => ['pending', 'accepted'].includes(item.status)).length
+  + packageOrders.value.filter(item => !['completed', 'cancelled'].includes(item.status)).length
+))
 function formatDate(value) { return value ? new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Not scheduled' }
 function paymentLabel(value) { return value === 'demo_upi' ? 'HomeServe Demo UPI' : 'Payment method unavailable' }
 function professionalInitial(name) { return String(name || 'P').trim().charAt(0).toUpperCase() }
@@ -48,7 +54,30 @@ async function loadBookings() {
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Could not load bookings')
     bookings.value = data.bookings
+    packageOrders.value = data.package_orders || []
   } catch (error) { errorMessage.value = error.message }
+}
+
+async function cancelPackage(order) {
+  errorMessage.value = ''
+  successMessage.value = ''
+  cancellingBookingId.value = `package-${order.id}`
+  try {
+    const response = await fetch(`/api/customer/package-orders/${order.id}/cancel`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.message || 'Could not cancel this package')
+    successMessage.value = data.payment_status === 'refunded'
+      ? 'Package cancelled and demo payment marked as refunded'
+      : data.message
+    await loadBookings()
+  } catch (error) { errorMessage.value = error.message }
+  finally {
+    cancellingBookingId.value = null
+    pendingCancelPackage.value = null
+  }
 }
 
 async function submitReview(booking) {
@@ -117,15 +146,59 @@ async function downloadInvoice(booking) {
     downloadingInvoiceId.value = null
   }
 }
+async function downloadPackageInvoice(order) {
+  errorMessage.value = ''
+  downloadingInvoiceId.value = `package-${order.id}`
+  try {
+    const response = await fetch(`/api/customer/package-orders/${order.id}/invoice`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+    })
+    if (!response.ok) {
+      const data = await response.json()
+      throw new Error(data.message || 'Could not download package invoice')
+    }
+    const file = await response.blob()
+    const url = URL.createObjectURL(file)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `homeserve-package-invoice-${order.id}.pdf`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (error) { errorMessage.value = error.message }
+  finally { downloadingInvoiceId.value = null }
+}
 onMounted(loadBookings)
 </script>
 
 <template>
   <div class="workbench customer-workbench"><CustomerHeader current="bookings" /><main class="workbench-content role-section-page customer-bookings-page">
-    <header class="role-section-heading"><div><p class="workbench-label">MY BOOKINGS</p><h1>Your home-care<br />timeline.</h1></div><p>See what happens next, who is assigned and when each professional is expected.</p></header>
+    <PageHeading eyebrow="Bookings" title="Your service timeline" description="Track status, professionals, payments and reviews." />
     <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
     <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
-    <section class="booking-overview-strip"><div><small>TOTAL REQUESTS</small><strong>{{ bookings.length }}</strong></div><div><small>OPEN NOW</small><strong>{{ openBookingCount }}</strong></div><RouterLink to="/customer/services">Book another service →</RouterLink></section>
+    <section class="booking-overview-strip"><div><small>TOTAL ORDERS</small><strong>{{ bookings.length + packageOrders.length }}</strong></div><div><small>OPEN NOW</small><strong>{{ openBookingCount }}</strong></div><RouterLink to="/customer/services">Book another service →</RouterLink></section>
+
+    <section v-if="packageOrders.length" class="package-order-section">
+      <header><div><p class="workbench-label">SERVICE PACKAGES</p><h2>Combined orders</h2></div><p>Each service is matched with the right professional. The package completes when every job is done.</p></header>
+      <article v-for="order in packageOrders" :key="order.id" class="package-order-card">
+        <div class="package-order-card__summary">
+          <div><small>PACKAGE #{{ String(order.id).padStart(4, '0') }}</small><h3>{{ order.name }}</h3><p>{{ formatDate(order.scheduled_for) }} · {{ order.address }}</p></div>
+          <div class="package-order-total"><small>TOTAL</small><strong>₹{{ order.total_amount }}</strong><span class="record-status" :class="`status-${order.status}`">{{ statusLabel(order.status) }}</span></div>
+        </div>
+        <ol class="package-service-progress">
+          <li v-for="service in order.services" :key="service.booking_id" :class="`is-${service.status}`">
+            <span>{{ service.status === 'completed' ? '✓' : service.status === 'accepted' ? '●' : '○' }}</span>
+            <div><strong>{{ service.service }}</strong><small>{{ service.professional || 'Waiting for matching professional' }}</small></div>
+            <b>{{ statusLabel(service.status) }}</b>
+          </li>
+        </ol>
+        <footer>
+          <RouterLink v-if="order.status === 'payment_pending'" :to="{ name: 'customer-book-service', params: { serviceId: order.service_type_id }, query: { resume: order.payment_booking_id } }">Complete payment</RouterLink>
+          <button v-if="order.payment_status === 'completed'" type="button" :disabled="downloadingInvoiceId === `package-${order.id}`" @click="downloadPackageInvoice(order)">{{ downloadingInvoiceId === `package-${order.id}` ? 'Preparing…' : 'Download invoice' }}</button>
+          <button v-if="!['completed', 'cancelled'].includes(order.status) && order.services.every(service => !service.professional)" class="package-cancel-button" type="button" @click="pendingCancelPackage = order">Cancel package</button>
+          <span v-if="order.status === 'completed'">All included services are complete.</span>
+        </footer>
+      </article>
+    </section>
     <div class="list-toolbar booking-filters"><div class="admin-filters"><button v-for="option in ['all', 'payment_pending', 'pending', 'accepted', 'completed', 'cancelled']" :key="option" :class="{ active: filter === option }" @click="filter = option">{{ option.replace('_', ' ') }}</button></div><label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search bookings" aria-label="Search bookings" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label></div>
     <section class="booking-compact-list">
       <article v-for="booking in paginatedBookings" :key="booking.id" :class="{ 'is-open': expandedBookingId === booking.id }">
@@ -175,6 +248,17 @@ onMounted(loadBookings)
     danger
     @confirm="cancelBooking(pendingCancelBooking)"
     @cancel="pendingCancelBooking = null"
+  />
+  <ConfirmActionModal
+    :open="Boolean(pendingCancelPackage)"
+    eyebrow="Package change"
+    :title="`Cancel ${pendingCancelPackage?.name || 'this package'}?`"
+    description="Every unassigned service in this package will be cancelled together. A completed demo payment will be marked as refunded."
+    confirm-label="Cancel package"
+    :busy="cancellingBookingId === `package-${pendingCancelPackage?.id}`"
+    danger
+    @confirm="cancelPackage(pendingCancelPackage)"
+    @cancel="pendingCancelPackage = null"
   />
   </div>
 </template>

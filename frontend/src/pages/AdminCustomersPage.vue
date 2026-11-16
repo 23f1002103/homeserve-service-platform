@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
+import PageHeading from '../components/PageHeading.vue'
 import ListPagination from '../components/ListPagination.vue'
 import { usePagination } from '../utils/pagination'
 
@@ -30,7 +31,7 @@ onMounted(loadCustomers)
   <div class="workbench admin-workbench">
     <AdminHeader current="customers" />
     <main class="workbench-content admin-section-page">
-      <header class="section-page-heading"><div><p class="workbench-label">PEOPLE / CUSTOMERS</p><h1>The households<br />we serve.</h1></div><p>A clear directory of registered HomeServe customers.</p></header>
+      <PageHeading variant="admin" eyebrow="Customers" title="Customer accounts" description="View registered customers and their booking records." />
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <label class="list-search standalone-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search customers or locations" aria-label="Search customers" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label>
       <section class="admin-records customer-records">

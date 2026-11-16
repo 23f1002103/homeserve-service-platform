@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import AdminHeader from '../components/AdminHeader.vue'
 import ConfirmActionModal from '../components/ConfirmActionModal.vue'
+import PageHeading from '../components/PageHeading.vue'
 
 const services = ref([])
 const serviceName = ref('')
@@ -15,6 +16,13 @@ const savingPriceId = ref(null)
 const deletingServiceId = ref(null)
 const searchQuery = ref('')
 const pendingDeleteService = ref(null)
+const packages = ref([])
+const packageName = ref('')
+const packageDescription = ref('')
+const packageServiceTypeIds = ref([])
+const packagePrice = ref('')
+const creatingPackage = ref(false)
+const updatingPackageId = ref(null)
 const visibleServices = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   return services.value.filter(service => [service.name, service.description, service.base_price].some(value => String(value || '').toLowerCase().includes(query)))
@@ -22,14 +30,80 @@ const visibleServices = computed(() => {
 
 async function loadServices() {
   try {
-    const response = await fetch('/api/admin/service-types', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    const data = await response.json()
+    const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    const [response, packagesResponse] = await Promise.all([
+      fetch('/api/admin/service-types', { headers }),
+      fetch('/api/admin/service-packages', { headers }),
+    ])
+    const [data, packagesData] = await Promise.all([response.json(), packagesResponse.json()])
     if (!response.ok) throw new Error(data.message || 'Could not load services')
+    if (!packagesResponse.ok) throw new Error(packagesData.message || 'Could not load packages')
     services.value = data.service_types
+    packages.value = packagesData.service_packages
     priceDrafts.value = Object.fromEntries(
       data.service_types.map((service) => [service.id, service.base_price || '']),
     )
   } catch (error) { errorMessage.value = error.message }
+}
+
+async function createPackage() {
+  errorMessage.value = ''
+  successMessage.value = ''
+  creatingPackage.value = true
+  try {
+    const response = await fetch('/api/admin/service-packages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      body: JSON.stringify({
+        name: packageName.value,
+        description: packageDescription.value,
+        service_type_ids: packageServiceTypeIds.value.map(Number),
+        package_price: packagePrice.value,
+      }),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.message || 'Could not create package')
+    packageName.value = ''
+    packageDescription.value = ''
+    packageServiceTypeIds.value = []
+    packagePrice.value = ''
+    successMessage.value = 'Service package created successfully'
+    await loadServices()
+  } catch (error) { errorMessage.value = error.message }
+  finally { creatingPackage.value = false }
+}
+
+async function togglePackage(servicePackage) {
+  updatingPackageId.value = servicePackage.id
+  errorMessage.value = ''
+  try {
+    const response = await fetch(`/api/admin/service-packages/${servicePackage.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      body: JSON.stringify({ is_active: !servicePackage.is_active }),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.message || 'Could not update package')
+    successMessage.value = `${servicePackage.name} ${servicePackage.is_active ? 'deactivated' : 'activated'}`
+    await loadServices()
+  } catch (error) { errorMessage.value = error.message }
+  finally { updatingPackageId.value = null }
+}
+
+async function deletePackage(servicePackage) {
+  updatingPackageId.value = servicePackage.id
+  errorMessage.value = ''
+  try {
+    const response = await fetch(`/api/admin/service-packages/${servicePackage.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.message || 'Could not delete package')
+    successMessage.value = `${servicePackage.name} deleted successfully`
+    await loadServices()
+  } catch (error) { errorMessage.value = error.message }
+  finally { updatingPackageId.value = null }
 }
 
 async function createService() {
@@ -99,7 +173,7 @@ onMounted(loadServices)
   <div class="workbench admin-workbench">
     <AdminHeader current="services" />
     <main class="workbench-content admin-section-page">
-      <header class="section-page-heading"><div><p class="workbench-label">CATALOGUE / SERVICES</p><h1>Define what<br />HomeServe offers.</h1></div><p>These service names appear in professional registration and future customer booking.</p></header>
+      <PageHeading variant="admin" eyebrow="Catalogue" title="Services and packages" description="Manage bookable services, prices and combo offers." />
       <p v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</p>
       <p v-if="successMessage" class="profile-success">{{ successMessage }}</p>
       <section class="service-manager standalone-manager">
@@ -122,6 +196,25 @@ onMounted(loadServices)
             <button class="service-delete-button" type="button" :disabled="deletingServiceId === service.id" @click="pendingDeleteService = service">{{ deletingServiceId === service.id ? 'Deleting…' : 'Delete' }}</button>
           </article>
           <p v-if="!visibleServices.length">{{ searchQuery ? 'No services match your search.' : 'No service types yet. Create the first one above.' }}</p>
+        </div>
+      </section>
+      <section class="service-manager package-manager">
+        <div class="service-manager__intro"><p class="workbench-label">COMBO PACKAGES</p><h2>Combine services.</h2><p>Select two or more services and set one discounted checkout price.</p></div>
+        <form class="service-form" @submit.prevent="createPackage">
+          <label>Package name<input v-model.trim="packageName" maxlength="120" required /></label>
+          <fieldset class="package-service-picker"><legend>Choose at least two services</legend><label v-for="service in services" :key="service.id"><input v-model="packageServiceTypeIds" type="checkbox" :value="service.id" /><span><strong>{{ service.name }}</strong><small>{{ service.base_price ? `₹${service.base_price}` : 'Price pending' }}</small></span></label></fieldset>
+          <label>Description<textarea v-model.trim="packageDescription" maxlength="500" rows="3"></textarea></label>
+          <label>Package price (₹)<input v-model="packagePrice" type="number" min="1" step="0.01" required /><small>The regular total is calculated from the selected services.</small></label>
+          <button type="submit" :disabled="creatingPackage">{{ creatingPackage ? 'Creating…' : 'Create package' }}</button>
+        </form>
+        <div class="service-type-list package-list">
+          <article v-for="servicePackage in packages" :key="servicePackage.id" class="priced-service-row package-admin-row">
+            <span>{{ servicePackage.is_active ? 'LIVE' : 'OFF' }}</span>
+            <div class="service-copy"><strong>{{ servicePackage.name }}</strong><small>{{ servicePackage.service_types.map(service => service.name).join(' + ') }}</small><small><s>₹{{ servicePackage.regular_price }}</s> &nbsp; ₹{{ servicePackage.package_price }}</small></div>
+            <button type="button" :disabled="updatingPackageId === servicePackage.id" @click="togglePackage(servicePackage)">{{ servicePackage.is_active ? 'Deactivate' : 'Activate' }}</button>
+            <button class="service-delete-button" type="button" :disabled="updatingPackageId === servicePackage.id" @click="deletePackage(servicePackage)">Delete</button>
+          </article>
+          <p v-if="!packages.length">No packages yet. Create the first bundle above.</p>
         </div>
       </section>
     </main>
