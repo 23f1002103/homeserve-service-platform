@@ -148,18 +148,10 @@ def serialize_available_job(job, profile):
             ),
             1,
         )
-    package_jobs = job.package_order.jobs if job.package_order else []
     return {
         "id": job.id,
         "service": job.service_type.name,
-        "booking_type": "combo" if job.package_order_id else "standard",
-        "package_name": (
-            job.package_order.service_package.name if job.package_order else None
-        ),
-        "combo_position": (
-            package_jobs.index(job) + 1 if job.package_order else None
-        ),
-        "combo_total": len(package_jobs) if job.package_order else None,
+        "booking_type": "standard",
         "area": (
             f"{job.service_area.city}, {job.service_area.state}"
             if job.service_area
@@ -353,8 +345,6 @@ def accept_job(job_id):
 
     job.professional_id = profile.id
     job.status = "accepted"
-    if job.package_order:
-        job.package_order.refresh_status()
     db.session.add(
         Notification(
             user_id=job.customer.user_id,
@@ -388,18 +378,6 @@ def complete_job(job_id):
 
     job.status = "completed"
     job.completed_at = datetime.now()
-    if job.package_order:
-        job.package_order.refresh_status()
-        if job.package_order.status == "completed":
-            db.session.add(
-                Notification(
-                    user_id=job.customer.user_id,
-                    message=(
-                        f"Every service in {job.package_order.service_package.name} "
-                        "is now complete."
-                    ),
-                )
-            )
     db.session.commit()
     enqueue_task(send_booking_completed, job.id)
     return {"message": "Job marked as completed"}, 200

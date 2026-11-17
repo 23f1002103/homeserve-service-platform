@@ -1,5 +1,4 @@
 import unittest
-from decimal import Decimal
 from unittest.mock import patch
 
 from flask_jwt_extended import create_access_token
@@ -9,9 +8,7 @@ from app.database import db
 from app.models import (
     Customer,
     Payment,
-    PackageOrder,
     ServiceArea,
-    ServicePackage,
     ServicePricing,
     ServiceRequest,
     ServiceType,
@@ -217,110 +214,6 @@ class CustomerDashboardTestCase(unittest.TestCase):
             payment = db.session.scalar(db.select(Payment))
             self.assertEqual(booking.status, "cancelled")
             self.assertEqual(payment.status, "refunded")
-
-    def test_customer_books_package_at_server_controlled_package_price(self):
-        with self.app.app_context():
-            service = db.session.scalar(db.select(ServiceType))
-            area_id = db.session.scalar(db.select(ServiceArea.id))
-            second_service = ServiceType(name="Plumbing")
-            db.session.add(second_service)
-            db.session.flush()
-            db.session.add(
-                ServicePricing(service_type_id=second_service.id, price="400.00")
-            )
-            package = ServicePackage(
-                name="Home Refresh Combo",
-                description="Cleaning and plumbing in one package",
-                regular_price="899.00",
-                package_price="699.00",
-                is_active=True,
-            )
-            package.service_types = [service, second_service]
-            db.session.add(package)
-            db.session.commit()
-            service_id = service.id
-            package_id = package.id
-
-        response = self.client.post(
-            "/api/customer/bookings",
-            headers={"Authorization": f"Bearer {self.token}"},
-            json={
-                "service_type_id": service_id,
-                "service_package_id": package_id,
-                "scheduled_for": "2099-01-20T10:30",
-                "service_address": "12 Main Road, Bengaluru",
-                "service_pin_code": "560001",
-                "service_city": "Bengaluru",
-                "service_state": "Karnataka",
-                "service_area_id": area_id,
-                "description": "Please complete every included task.",
-            },
-        )
-
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.get_json()["demo_payment"]["amount"], "699.00")
-        payment_response = self.client.post(
-            f"/api/customer/bookings/{response.get_json()['booking_id']}/complete-demo-payment",
-            headers={"Authorization": f"Bearer {self.token}"},
-            json={
-                "order_id": response.get_json()["demo_payment"]["order_id"],
-                "result": "success",
-            },
-        )
-        self.assertEqual(payment_response.status_code, 200)
-        orders_response = self.client.get(
-            "/api/customer/bookings",
-            headers={"Authorization": f"Bearer {self.token}"},
-        )
-        self.assertEqual(orders_response.status_code, 200)
-        self.assertEqual(orders_response.get_json()["bookings"], [])
-        self.assertEqual(
-            orders_response.get_json()["package_orders"][0]["name"],
-            "Home Refresh Combo",
-        )
-        dashboard_response = self.client.get(
-            "/api/customer/dashboard",
-            headers={"Authorization": f"Bearer {self.token}"},
-        )
-        self.assertEqual(dashboard_response.status_code, 200)
-        self.assertEqual(
-            dashboard_response.get_json()["active_package_orders"][0]["name"],
-            "Home Refresh Combo",
-        )
-        order_id = orders_response.get_json()["package_orders"][0]["id"]
-        invoice_response = self.client.get(
-            f"/api/customer/package-orders/{order_id}/invoice",
-            headers={"Authorization": f"Bearer {self.token}"},
-        )
-        self.assertEqual(invoice_response.status_code, 200)
-        self.assertTrue(invoice_response.data.startswith(b"%PDF"))
-        with self.app.app_context():
-            bookings = db.session.scalars(
-                db.select(ServiceRequest).order_by(ServiceRequest.id)
-            ).all()
-            self.assertEqual(len(bookings), 2)
-            self.assertTrue(all(item.service_package_id == package_id for item in bookings))
-            self.assertEqual(len({item.package_order_id for item in bookings}), 1)
-            package_order = db.session.scalar(db.select(PackageOrder))
-            self.assertEqual(package_order.status, "pending")
-            self.assertEqual(package_order.jobs, bookings)
-            self.assertEqual(
-                sum((item.payments[0].amount for item in bookings), Decimal("0.00")),
-                Decimal("699.00"),
-            )
-            self.assertTrue(all(item.status == "pending" for item in bookings))
-            self.assertTrue(
-                all(item.payments[0].status == "completed" for item in bookings)
-            )
-
-            bookings[0].status = "accepted"
-            self.assertEqual(package_order.refresh_status(), "partially_assigned")
-            bookings[1].status = "accepted"
-            self.assertEqual(package_order.refresh_status(), "assigned")
-            bookings[0].status = "completed"
-            self.assertEqual(package_order.refresh_status(), "partially_completed")
-            bookings[1].status = "completed"
-            self.assertEqual(package_order.refresh_status(), "completed")
 
     def test_customer_can_resume_payment_for_an_unpaid_booking(self):
         with self.app.app_context():

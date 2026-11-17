@@ -78,19 +78,6 @@ h1 { max-width: 680px; margin-bottom: 26px; font-size: clamp(3.6rem, 7vw, 6.5rem
 .services-empty > span { color: #3157d5; font-size: 0.68rem; font-weight: 850; letter-spacing: 0.12em; text-transform: uppercase; }
 .services-empty h3 { margin: 16px 0 8px; font: 2rem Georgia, serif; }
 .services-empty p { margin: 0; color: #68736e; }
-.package-offers-section { border-top: 1px solid #dedbd2; }
-.landing-package-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
-.landing-package-grid article { display: grid; padding: 30px; border-radius: 18px; color: #eef2ff; background: #243fa6; }
-.landing-package-grid small { color: #cbd6ff; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
-.landing-package-grid h3 { margin: 18px 0 10px; color: #fff; font: 1.8rem Georgia, serif; }
-.landing-package-grid p { color: #cbd6ee; line-height: 1.55; }
-.landing-package-grid ul { padding-left: 18px; color: #e3e9ff; font-size: 0.82rem; line-height: 1.8; }
-.landing-package-grid footer { display: flex; justify-content: space-between; gap: 18px; align-items: end; margin-top: 20px; padding-top: 18px; border-top: 1px solid rgb(255 255 255 / 18%); }
-.landing-package-grid footer > span { display: grid; gap: 3px; }
-.landing-package-grid footer s { color: #9fb5aa; font-size: 0.76rem; }
-.landing-package-grid footer strong { color: #fff; font: 1.45rem Georgia, serif; }
-.landing-package-grid .card-link { color: #dce4ff; }
-
 .trust-section { position: relative; display: grid; grid-template-columns: 0.85fr 1.15fr; gap: clamp(56px, 8vw, 110px); width: min(1240px, calc(100% - 40px)); margin-bottom: 60px; padding: clamp(58px, 7vw, 90px); overflow: hidden; border-radius: 48px 12px 48px 12px; color: #fff; background: #243fa6; }
 .trust-section::after { position: absolute; right: -80px; bottom: -145px; width: 340px; height: 340px; border: 1px solid rgb(240 178 116 / 18%); border-radius: 50%; content: ''; box-shadow: 0 0 0 58px rgb(255 255 255 / 2%), 0 0 0 116px rgb(255 255 255 / 2%); pointer-events: none; }
 .eyebrow--light { color: #cbd6ff; }

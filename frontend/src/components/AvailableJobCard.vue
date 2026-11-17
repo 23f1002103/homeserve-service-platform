@@ -20,10 +20,9 @@ function scheduleParts(value) {
 <template>
   <article class="available-job-card">
     <header class="available-job-card__header">
-      <div><code>#{{ String(job.id).padStart(4, '0') }}</code><span class="job-type-badge" :class="`is-${job.booking_type}`">{{ job.booking_type === 'combo' ? 'Combo job' : 'Standard' }}</span></div>
+      <div><code>#{{ String(job.id).padStart(4, '0') }}</code><span class="job-type-badge is-standard">Standard</span></div>
       <p class="workbench-label">{{ job.service }}</p>
       <h2>{{ job.description }}</h2>
-      <small v-if="job.booking_type === 'combo'">{{ job.package_name }} · Service {{ job.combo_position }} of {{ job.combo_total }}</small>
     </header>
 
     <section class="available-job-route" aria-label="Approximate route to the customer service area">

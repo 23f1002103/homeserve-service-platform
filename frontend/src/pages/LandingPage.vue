@@ -63,12 +63,6 @@ function servicePath(service) {
   return currentUser.role === 'customer' ? `/customer/book/${service.id}` : dashboardPath.value
 }
 
-function packagePath(servicePackage) {
-  return currentUser.role === 'customer'
-    ? `/customer/book/${servicePackage.service_types[0].id}?package=${servicePackage.id}`
-    : dashboardPath.value
-}
-
 function serviceImage(service) {
   return serviceImages[service.name.trim().toLowerCase()] || null
 }
@@ -103,7 +97,7 @@ onMounted(loadLandingPage)
         <span class="brand-mark" aria-hidden="true">H</span><span>HomeServe</span>
       </a>
       <nav class="main-nav" aria-label="Main navigation">
-        <a href="#services">Services</a><a v-if="landingData?.service_packages?.length" href="#packages">Packages</a><a href="#why-us">Why us</a>
+        <a href="#services">Services</a><a href="#why-us">Why us</a>
       </nav>
       <RouterLink class="button button--small" :to="dashboardPath">{{ accountLabel }}</RouterLink>
     </header>
@@ -153,16 +147,6 @@ onMounted(loadLandingPage)
           <div v-else class="services-empty"><span>Featured services</span><h3>New featured services are being prepared.</h3><p>Please check again soon for services available to book from the homepage.</p></div>
         </section>
 
-        <section v-if="landingData.service_packages?.length" id="packages" class="section package-offers-section" aria-labelledby="packages-title">
-          <div class="section-heading"><div><p class="eyebrow">Combo offers</p><h2 id="packages-title">More care in one visit.</h2></div><div class="section-heading__support"><p>Admin-curated bundles of related tasks, completed by one matching professional at a package price.</p></div></div>
-          <div class="landing-package-grid">
-            <article v-for="servicePackage in landingData.service_packages" :key="servicePackage.id">
-              <small>{{ servicePackage.service_types.map(service => service.name).join(' + ') }}</small><h3>{{ servicePackage.name }}</h3><p>{{ servicePackage.description }}</p>
-              <ul><li v-for="item in servicePackage.service_types" :key="item.id">{{ item.name }}</li></ul>
-              <footer><span><s>₹{{ servicePackage.regular_price }}</s><strong>₹{{ servicePackage.package_price }}</strong></span><RouterLink class="card-link" :to="packagePath(servicePackage)">{{ currentUser.role === 'customer' ? 'Book package' : 'Get started' }} <b>→</b></RouterLink></footer>
-            </article>
-          </div>
-        </section>
 
         <section id="why-us" class="section trust-section" aria-labelledby="trust-title">
           <div class="trust-intro">

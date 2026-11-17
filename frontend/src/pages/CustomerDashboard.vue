@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CustomerHeader from '../components/CustomerHeader.vue'
-import { statusLabel } from '../utils/status'
 
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const dashboard = ref(null)
@@ -13,7 +12,6 @@ let refreshTimer
 
 const activeBookings = computed(() => dashboard.value?.active_bookings || (dashboard.value?.active_booking ? [dashboard.value.active_booking] : []))
 const activeBooking = computed(() => activeBookings.value[activeBookingIndex.value] || null)
-const activePackageOrders = computed(() => dashboard.value?.active_package_orders || [])
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'Schedule pending'
@@ -81,13 +79,6 @@ onUnmounted(() => clearInterval(refreshTimer))
         <div><strong>Complete your contact and address details</strong><small>Required before your first booking.</small></div>
         <b>Complete profile →</b>
       </RouterLink>
-      <section v-if="activePackageOrders.length" class="dashboard-package-orders">
-        <header><div><span>COMBO ORDERS</span><h2>Services working together</h2></div><RouterLink to="/customer/bookings">View all orders →</RouterLink></header>
-        <article v-for="order in activePackageOrders" :key="order.id">
-          <div class="dashboard-package-title"><span>PKG-{{ String(order.id).padStart(4, '0') }}</span><h3>{{ order.name }}</h3><small>{{ statusLabel(order.status) }}</small></div>
-          <ol><li v-for="service in order.services" :key="service.name"><i :class="`is-${service.status}`">{{ service.status === 'completed' ? '✓' : service.status === 'accepted' ? '●' : '○' }}</i><div><strong>{{ service.name }}</strong><small>{{ service.professional || statusLabel(service.status) }}</small></div></li></ol>
-        </article>
-      </section>
       <section v-if="activeBooking" class="active-booking-tracker" @touchstart.passive="beginBookingSwipe" @touchend.passive="finishBookingSwipe">
         <header><div><p class="workbench-label">ACTIVE BOOKING · #{{ String(activeBooking.id).padStart(4, '0') }}</p><h2>{{ activeBooking.service }}</h2></div><div class="tracker-header-actions"><div v-if="activeBookings.length > 1" class="tracker-pagination" aria-label="Choose active booking"><button type="button" aria-label="Previous active booking" @click="showBooking(-1)">←</button><span>{{ activeBookingIndex + 1 }} / {{ activeBookings.length }}</span><button type="button" aria-label="Next active booking" @click="showBooking(1)">→</button></div><RouterLink to="/customer/bookings">Open details</RouterLink></div></header>
         <div class="active-booking-summary">
@@ -100,7 +91,7 @@ onUnmounted(() => clearInterval(refreshTimer))
         <p class="tracker-refresh-note">{{ activeBookings.length > 1 ? 'Swipe or use the arrows to see every active booking. ' : '' }}Status refreshes automatically every 30 seconds.</p>
       </section>
       <section class="customer-quick-actions">
-        <RouterLink to="/customer/services"><span>⌕</span><div><strong>Browse services</strong><small>Services and combo packages</small></div><b>→</b></RouterLink>
+        <RouterLink to="/customer/services"><span>⌕</span><div><strong>Browse services</strong><small>Choose a home service</small></div><b>→</b></RouterLink>
         <RouterLink to="/customer/bookings"><span>▤</span><div><strong>Orders</strong><small>Track visits, payments and reviews</small></div><b>→</b></RouterLink>
         <RouterLink to="/customer/profile"><span>♙</span><div><strong>Profile</strong><small>Contact and service address</small></div><b>→</b></RouterLink>
       </section>

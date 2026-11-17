@@ -16,15 +16,13 @@ from ..location import (
 from ..models import (
     Customer,
     Notification,
-    PackageOrder,
     Payment,
     Review,
     ServiceArea,
-    ServicePackage,
     ServiceRequest,
     ServiceType,
 )
-from ..reports import create_invoice_pdf, create_package_invoice_pdf
+from ..reports import create_invoice_pdf
 from ..tasks import enqueue_task, send_booking_confirmation
 
 
@@ -63,34 +61,19 @@ def dashboard():
     open_bookings = db.session.scalar(
         db.select(db.func.count(ServiceRequest.id)).where(
             ServiceRequest.customer_id == profile.id,
-            ServiceRequest.package_order_id.is_(None),
             ServiceRequest.status.in_(["pending", "accepted"]),
-        )
-    )
-    open_bookings += db.session.scalar(
-        db.select(db.func.count(PackageOrder.id)).where(
-            PackageOrder.customer_id == profile.id,
-            PackageOrder.status.notin_(["completed", "cancelled"]),
         )
     )
     completed_bookings = db.session.scalar(
         db.select(db.func.count(ServiceRequest.id)).where(
             ServiceRequest.customer_id == profile.id,
-            ServiceRequest.package_order_id.is_(None),
             ServiceRequest.status == "completed",
-        )
-    )
-    completed_bookings += db.session.scalar(
-        db.select(db.func.count(PackageOrder.id)).where(
-            PackageOrder.customer_id == profile.id,
-            PackageOrder.status == "completed",
         )
     )
     active_bookings = db.session.scalars(
         db.select(ServiceRequest)
         .where(
             ServiceRequest.customer_id == profile.id,
-            ServiceRequest.package_order_id.is_(None),
             ServiceRequest.status.in_(["pending", "accepted"]),
         )
         .order_by(ServiceRequest.created_at.desc(), ServiceRequest.id.desc())
@@ -124,15 +107,6 @@ def dashboard():
     serialized_active_bookings = [
         serialize_active_booking(booking) for booking in active_bookings
     ]
-    active_package_orders = db.session.scalars(
-        db.select(PackageOrder)
-        .where(
-            PackageOrder.customer_id == profile.id,
-            PackageOrder.status.notin_(["completed", "cancelled"]),
-        )
-        .order_by(PackageOrder.created_at.desc())
-    ).all()
-
     return {
         "city": profile.city,
         "open_bookings": open_bookings,
@@ -141,26 +115,6 @@ def dashboard():
         "active_booking": (
             serialized_active_bookings[0] if serialized_active_bookings else None
         ),
-        "active_package_orders": [
-            {
-                "id": order.id,
-                "name": order.service_package.name,
-                "status": order.status,
-                "services": [
-                    {
-                        "name": job.service_type.name,
-                        "status": job.status,
-                        "professional": (
-                            job.professional.user.username
-                            if job.professional
-                            else None
-                        ),
-                    }
-                    for job in order.jobs
-                ],
-            }
-            for order in active_package_orders
-        ],
     }, 200
 
 
@@ -263,13 +217,6 @@ def services():
     service_list = db.session.scalars(
         db.select(ServiceType).order_by(ServiceType.name)
     ).all()
-    package_list = db.session.scalars(
-        db.select(ServicePackage)
-        .where(ServicePackage.is_active.is_(True))
-        .order_by(ServicePackage.created_at.desc())
-    ).all()
-    package_list = [package for package in package_list if len(package.service_types) >= 2]
-
     return {
         "service_area_available": customer_area is not None,
         "customer_area": {
@@ -287,20 +234,6 @@ def services():
                 ),
             }
             for service in service_list
-        ],
-        "service_packages": [
-            {
-                "id": package.id,
-                "service_types": [
-                    {"id": service.id, "name": service.name, "description": service.description}
-                    for service in package.service_types
-                ],
-                "name": package.name,
-                "description": package.description,
-                "regular_price": str(package.regular_price),
-                "package_price": str(package.package_price),
-            }
-            for package in package_list
         ],
     }, 200
 
@@ -386,7 +319,6 @@ def create_booking():
 
     data = request.get_json(silent=True) or {}
     service_type_id = data.get("service_type_id")
-    service_package_id = data.get("service_package_id")
     service_pin_code = (data.get("service_pin_code") or "").strip()
     service_city = (data.get("service_city") or "").strip()
     service_state = (data.get("service_state") or "").strip()
@@ -405,18 +337,6 @@ def create_booking():
     service_type = db.session.get(ServiceType, service_type_id)
     if service_type is None:
         return {"message": "Service type not found"}, 404
-    service_package = None
-    if service_package_id is not None:
-        if not isinstance(service_package_id, int):
-            return {"message": "Choose a valid service package"}, 400
-        service_package = db.session.get(ServicePackage, service_package_id)
-        if (
-            service_package is None
-            or not service_package.is_active
-            or len(service_package.service_types) < 2
-            or service_type not in service_package.service_types
-        ):
-            return {"message": "This service package is no longer available"}, 409
     if (
         not address
         or not description
@@ -484,7 +404,7 @@ def create_booking():
         )
     if service_area is None:
         return {"message": "HomeServe is not available at this location"}, 400
-    if service_package is None and not service_type.pricing:
+    if not service_type.pricing:
         return {"message": "This service does not have a price yet"}, 400
 
     try:
@@ -498,75 +418,45 @@ def create_booking():
         db.session.rollback()
         return {"message": "Platform commission must be between 0 and 100"}, 500
 
-    selected_services = service_package.service_types if service_package else [service_type]
-    total_amount = service_package.package_price if service_package else service_type.pricing[0].price
-    base_total = sum((item.pricing[0].price for item in selected_services), Decimal("0.00"))
-    package_order = None
-    if service_package:
-        package_order = PackageOrder(
-            customer_id=profile.id,
-            service_package_id=service_package.id,
-            total_amount=total_amount,
-            status="payment_pending",
-        )
-        db.session.add(package_order)
-        db.session.flush()
-    bookings = []
-    remaining = total_amount
-    for index, selected_service in enumerate(selected_services):
-        amount = (
-            remaining
-            if index == len(selected_services) - 1
-            else (total_amount * selected_service.pricing[0].price / base_total).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-        )
-        remaining -= amount
-        booking = ServiceRequest(
-            customer_id=profile.id,
-            service_type_id=selected_service.id,
-            service_package_id=(service_package.id if service_package else None),
-            package_order_id=(package_order.id if package_order else None),
-            service_area_id=service_area.id,
-            service_address=address,
-            description=description,
-            booking_for=booking_for,
-            recipient_name=recipient_name,
-            recipient_phone=recipient_phone,
-            scheduled_for=scheduled_for,
-            latitude=latitude,
-            longitude=longitude,
-            status="payment_pending",
-        )
-        db.session.add(booking)
-        db.session.flush()
-        platform_fee = (amount * commission_rate / 100).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-        payment = Payment(
-            service_request_id=booking.id,
-            amount=amount,
-            commission_rate=commission_rate,
-            platform_fee=platform_fee,
-            professional_earning=amount - platform_fee,
-            payment_method="demo_upi",
-            status="pending",
-            provider_order_id=f"demo_order_{uuid4().hex[:20]}",
-        )
-        db.session.add(payment)
-        bookings.append(booking)
-
-    booking = bookings[0]
-    payment = booking.payments[0]
+    amount = service_type.pricing[0].price
+    booking = ServiceRequest(
+        customer_id=profile.id,
+        service_type_id=service_type.id,
+        service_area_id=service_area.id,
+        service_address=address,
+        description=description,
+        booking_for=booking_for,
+        recipient_name=recipient_name,
+        recipient_phone=recipient_phone,
+        scheduled_for=scheduled_for,
+        latitude=latitude,
+        longitude=longitude,
+        status="payment_pending",
+    )
+    db.session.add(booking)
+    db.session.flush()
+    platform_fee = (amount * commission_rate / 100).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    payment = Payment(
+        service_request_id=booking.id,
+        amount=amount,
+        commission_rate=commission_rate,
+        platform_fee=platform_fee,
+        professional_earning=amount - platform_fee,
+        payment_method="demo_upi",
+        status="pending",
+        provider_order_id=f"demo_order_{uuid4().hex[:20]}",
+    )
+    db.session.add(payment)
     db.session.commit()
 
     return {
         "message": "Demo payment order created",
         "booking_id": booking.id,
-        "package_order_id": package_order.id if package_order else None,
         "demo_payment": {
             "order_id": payment.provider_order_id,
-            "amount": str(total_amount),
+            "amount": str(amount),
             "currency": "INR",
             "payee": "HomeServe Demo",
             "demo_upi_id": "homeserve.demo@upi",
@@ -592,9 +482,8 @@ def complete_demo_payment(booking_id):
     if booking.status == "cancelled":
         return {"message": "This booking was cancelled"}, 409
 
-    grouped_bookings = booking.package_order.jobs if booking.package_order else [booking]
     payment = booking.payments[0]
-    if all(item.payments[0].status == "completed" for item in grouped_bookings):
+    if payment.status == "completed":
         return {"message": "Payment was already verified"}, 200
 
     data = request.get_json(silent=True) or {}
@@ -606,21 +495,15 @@ def complete_demo_payment(booking_id):
         return {"message": "Choose a valid demo payment result"}, 400
 
     if result == "failed":
-        for item in grouped_bookings:
-            item.payments[0].status = "failed"
+        payment.status = "failed"
         db.session.commit()
         return {"message": "Demo payment failed", "payment_status": "failed"}, 200
 
-    for item in grouped_bookings:
-        item_payment = item.payments[0]
-        item_payment.provider_payment_id = f"demo_pay_{uuid4().hex[:20]}"
-        item_payment.status = "completed"
-        item.status = "pending"
-    if booking.package_order:
-        booking.package_order.refresh_status()
+    payment.provider_payment_id = f"demo_pay_{uuid4().hex[:20]}"
+    payment.status = "completed"
+    booking.status = "pending"
     db.session.commit()
-    for item in grouped_bookings:
-        enqueue_task(send_booking_confirmation, item.id)
+    enqueue_task(send_booking_confirmation, booking.id)
 
     return {
         "message": "Demo payment completed and booking confirmed",
@@ -658,13 +541,12 @@ def resume_demo_payment(booking_id):
     payment.status = "pending"
     db.session.commit()
 
-    grouped_bookings = booking.package_order.jobs if booking.package_order else [booking]
     return {
         "message": "Demo payment is ready to continue",
         "booking_id": booking.id,
         "demo_payment": {
             "order_id": payment.provider_order_id,
-            "amount": str(sum((item.payments[0].amount for item in grouped_bookings), Decimal("0.00"))),
+            "amount": str(payment.amount),
             "currency": "INR",
             "payee": "HomeServe Demo",
             "demo_upi_id": "homeserve.demo@upi",
@@ -698,34 +580,6 @@ def download_invoice(booking_id):
     )
 
 
-@customer.get("/package-orders/<int:order_id>/invoice")
-@roles_required("customer")
-def download_package_invoice(order_id):
-    user_id = int(get_jwt_identity())
-    profile = db.session.scalar(
-        db.select(Customer).where(Customer.user_id == user_id)
-    )
-    order = db.session.scalar(
-        db.select(PackageOrder).where(
-            PackageOrder.id == order_id,
-            PackageOrder.customer_id == profile.id,
-        )
-    ) if profile else None
-    if order is None:
-        return {"message": "Package order not found"}, 404
-    if not order.jobs or any(
-        not job.payments or job.payments[0].status != "completed"
-        for job in order.jobs
-    ):
-        return {"message": "Invoice is available only after payment"}, 409
-    return send_file(
-        create_package_invoice_pdf(order),
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name=f"homeserve-package-invoice-{order.id}.pdf",
-    )
-
-
 @customer.patch("/bookings/<int:booking_id>/cancel")
 @roles_required("customer")
 def cancel_booking(booking_id):
@@ -746,68 +600,23 @@ def cancel_booking(booking_id):
     )
     if booking is None:
         return {"message": "Booking not found"}, 404
-    grouped_bookings = booking.package_order.jobs if booking.package_order else [booking]
-    if any(
-        item.professional_id is not None
-        or item.status not in {"payment_pending", "pending"}
-        for item in grouped_bookings
+    if (
+        booking.professional_id is not None
+        or booking.status not in {"payment_pending", "pending"}
     ):
         return {
             "message": "A booking can be cancelled only before a professional accepts it"
         }, 409
 
     payment_status = None
-    for item in grouped_bookings:
-        if item.payments:
-            item_payment = item.payments[0]
-            item_payment.status = (
-                "refunded" if item_payment.status == "completed" else "cancelled"
-            )
-            payment_status = item_payment.status
-        item.status = "cancelled"
-    if booking.package_order:
-        booking.package_order.status = "cancelled"
+    if booking.payments:
+        payment = booking.payments[0]
+        payment.status = "refunded" if payment.status == "completed" else "cancelled"
+        payment_status = payment.status
+    booking.status = "cancelled"
     db.session.commit()
     return {
         "message": "Booking cancelled successfully",
-        "payment_status": payment_status,
-    }, 200
-
-
-@customer.patch("/package-orders/<int:order_id>/cancel")
-@roles_required("customer")
-def cancel_package_order(order_id):
-    user_id = int(get_jwt_identity())
-    profile = db.session.scalar(
-        db.select(Customer).where(Customer.user_id == user_id)
-    )
-    order = db.session.scalar(
-        db.select(PackageOrder)
-        .where(PackageOrder.id == order_id, PackageOrder.customer_id == profile.id)
-        .with_for_update()
-    ) if profile else None
-    if order is None:
-        return {"message": "Package order not found"}, 404
-    if any(
-        job.professional_id is not None
-        or job.status not in {"payment_pending", "pending"}
-        for job in order.jobs
-    ):
-        return {
-            "message": "A package can be cancelled only before a professional accepts a service"
-        }, 409
-
-    payment_status = None
-    for job in order.jobs:
-        if job.payments:
-            payment = job.payments[0]
-            payment.status = "refunded" if payment.status == "completed" else "cancelled"
-            payment_status = payment.status
-        job.status = "cancelled"
-    order.status = "cancelled"
-    db.session.commit()
-    return {
-        "message": "Package order cancelled successfully",
         "payment_status": payment_status,
     }, 200
 
@@ -871,50 +680,7 @@ def bookings():
             ),
         }
 
-    package_orders = db.session.scalars(
-        db.select(PackageOrder)
-        .where(PackageOrder.customer_id == profile.id)
-        .order_by(PackageOrder.created_at.desc())
-    ).all()
-
     return {
-        "package_orders": [
-            {
-                "id": order.id,
-                "name": order.service_package.name,
-                "status": order.status,
-                "total_amount": str(order.total_amount),
-                "created_at": order.created_at.isoformat(),
-                "scheduled_for": (
-                    order.jobs[0].scheduled_for.isoformat()
-                    if order.jobs and order.jobs[0].scheduled_for
-                    else None
-                ),
-                "address": order.jobs[0].service_address if order.jobs else None,
-                "payment_status": (
-                    order.jobs[0].payments[0].status
-                    if order.jobs and order.jobs[0].payments
-                    else None
-                ),
-                "payment_booking_id": order.jobs[0].id if order.jobs else None,
-                "service_type_id": order.jobs[0].service_type_id if order.jobs else None,
-                "services": [
-                    {
-                        "booking_id": job.id,
-                        "service": job.service_type.name,
-                        "status": job.status,
-                        "professional": (
-                            job.professional.user.username
-                            if job.professional
-                            else None
-                        ),
-                        "professional_details": assigned_professional(job),
-                    }
-                    for job in order.jobs
-                ],
-            }
-            for order in package_orders
-        ],
         "bookings": [
             {
                 "id": booking.id,
@@ -971,7 +737,6 @@ def bookings():
                 ),
             }
             for booking in booking_list
-            if booking.service_package_id is None
         ]
     }, 200
 

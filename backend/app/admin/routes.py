@@ -13,7 +13,6 @@ from ..models import (
     Professional,
     Review,
     ServiceArea,
-    ServicePackage,
     ServicePricing,
     ServiceRequest,
     ServiceType,
@@ -536,115 +535,6 @@ def service_types():
     }, 200
 
 
-def serialize_service_package(package):
-    return {
-        "id": package.id,
-        "service_types": [
-            {"id": service.id, "name": service.name, "description": service.description}
-            for service in package.service_types
-        ],
-        "name": package.name,
-        "description": package.description,
-        "regular_price": str(package.regular_price),
-        "package_price": str(package.package_price),
-        "is_active": package.is_active,
-    }
-
-
-@admin.get("/service-packages")
-@roles_required("admin")
-def service_packages():
-    packages = db.session.scalars(
-        db.select(ServicePackage).order_by(ServicePackage.created_at.desc())
-    ).all()
-    return {"service_packages": [serialize_service_package(item) for item in packages]}, 200
-
-
-@admin.post("/service-packages")
-@roles_required("admin")
-def create_service_package():
-    data = request.get_json(silent=True) or {}
-    name = (data.get("name") or "").strip()
-    description = (data.get("description") or "").strip()
-    service_type_ids = data.get("service_type_ids")
-
-    if not name or len(name) > 120:
-        return {"message": "Package name is required and must be 120 characters or fewer"}, 400
-    if len(description) > 500:
-        return {"message": "Description must be 500 characters or fewer"}, 400
-    if not isinstance(service_type_ids, list) or len(set(service_type_ids)) < 2:
-        return {"message": "Choose at least two different services"}, 400
-    if any(not isinstance(item, int) for item in service_type_ids):
-        return {"message": "Choose valid services"}, 400
-    selected_services = db.session.scalars(
-        db.select(ServiceType).where(ServiceType.id.in_(set(service_type_ids)))
-    ).all()
-    if len(selected_services) != len(set(service_type_ids)):
-        return {"message": "One or more selected services do not exist"}, 400
-    if any(not service.pricing for service in selected_services):
-        return {"message": "Every selected service must have a base price"}, 400
-    regular_price = sum(
-        (service.pricing[0].price for service in selected_services), Decimal("0.00")
-    )
-
-    try:
-        package_price = Decimal(str(data.get("package_price")))
-    except (InvalidOperation, ValueError):
-        return {"message": "Enter a valid package price"}, 400
-    if package_price <= 0:
-        return {"message": "Package price must be greater than zero"}, 400
-    if package_price >= regular_price:
-        return {"message": "Package price must be lower than the regular total"}, 400
-
-    existing = db.session.scalar(
-        db.select(ServicePackage).where(db.func.lower(ServicePackage.name) == name.lower())
-    )
-    if existing is not None:
-        return {"message": "A package with this name already exists"}, 409
-
-    package = ServicePackage(
-        name=name,
-        description=description or None,
-        regular_price=regular_price,
-        package_price=package_price,
-        is_active=True,
-    )
-    package.service_types = selected_services
-    db.session.add(package)
-    db.session.commit()
-    return {
-        "message": "Service package created successfully",
-        "service_package": serialize_service_package(package),
-    }, 201
-
-
-@admin.patch("/service-packages/<int:package_id>")
-@roles_required("admin")
-def update_service_package(package_id):
-    package = db.session.get(ServicePackage, package_id)
-    if package is None:
-        return {"message": "Service package not found"}, 404
-    data = request.get_json(silent=True) or {}
-    if not isinstance(data.get("is_active"), bool):
-        return {"message": "is_active must be true or false"}, 400
-    package.is_active = data["is_active"]
-    db.session.commit()
-    return {"message": "Service package updated successfully"}, 200
-
-
-@admin.delete("/service-packages/<int:package_id>")
-@roles_required("admin")
-def delete_service_package(package_id):
-    package = db.session.get(ServicePackage, package_id)
-    if package is None:
-        return {"message": "Service package not found"}, 404
-    if package.bookings:
-        return {"message": "Deactivate this package because booking history uses it"}, 409
-    db.session.delete(package)
-    db.session.commit()
-    return {"message": "Service package deleted successfully"}, 200
-
-
 @admin.get("/requests")
 @roles_required("admin")
 def service_requests():
@@ -776,12 +666,11 @@ def delete_service_type(service_type_id):
             ServiceRequest.service_type_id == service_type_id
         )
     )
-    package_count = len(service_type.packages)
-    if professional_count or booking_count or package_count:
+    if professional_count or booking_count:
         return {
             "message": (
                 "This service cannot be deleted because professionals or bookings "
-                "already use it, or service packages depend on it"
+                "already use it"
             )
         }, 409
 

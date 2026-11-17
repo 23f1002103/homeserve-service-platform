@@ -2,23 +2,6 @@
 from .database import db
 
 
-service_package_services = db.Table(
-    "service_package_services",
-    db.Column(
-        "service_package_id",
-        db.Integer,
-        db.ForeignKey("service_packages.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    db.Column(
-        "service_type_id",
-        db.Integer,
-        db.ForeignKey("service_types.id"),
-        primary_key=True,
-    ),
-)
-
-
 class User(db.Model):
     """Model representing a user in the HomeServe application."""
     __tablename__ = 'users'
@@ -146,16 +129,6 @@ class ServiceRequest(db.Model):
         db.ForeignKey("service_types.id"),
         nullable=False,
     )
-    service_package_id = db.Column(
-        db.Integer,
-        db.ForeignKey("service_packages.id"),
-        nullable=True,
-    )
-    package_order_id = db.Column(
-        db.Integer,
-        db.ForeignKey("package_orders.id"),
-        nullable=True,
-    )
     service_area_id = db.Column(
         db.Integer,
         db.ForeignKey("service_areas.id"),
@@ -180,17 +153,9 @@ class ServiceRequest(db.Model):
     service_area = db.relationship("ServiceArea", backref=db.backref("service_requests", lazy=True))
     customer = db.relationship('Customer', backref=db.backref('service_requests', lazy=True))
     professional = db.relationship('Professional', backref=db.backref('service_requests', lazy=True))
-    service_package = db.relationship(
-        "ServicePackage",
-        back_populates="bookings",
-    )
-    package_order = db.relationship("PackageOrder", back_populates="jobs")
-
     @property
     def service_name(self):
-        """Use the package name in customer-facing booking descriptions."""
-        if self.service_package:
-            return f"{self.service_package.name} · {self.service_type.name}"
+        """Return the customer-facing service name."""
         return self.service_type.name
 
     def __repr__(self):
@@ -270,91 +235,6 @@ class ServiceType(db.Model):
     def __repr__(self):
         return f'<ServiceType {self.name}>'
 
-
-class ServicePackage(db.Model):
-    """A discounted bundle containing two or more service categories."""
-    __tablename__ = "service_packages"
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), unique=True, nullable=False)
-    description = db.Column(db.String(500), nullable=True)
-    regular_price = db.Column(db.Numeric(10, 2), nullable=False)
-    package_price = db.Column(db.Numeric(10, 2), nullable=False)
-    is_active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
-
-    service_types = db.relationship(
-        "ServiceType",
-        secondary=service_package_services,
-        backref=db.backref("packages", lazy=True),
-        order_by="ServiceType.name",
-    )
-    bookings = db.relationship("ServiceRequest", back_populates="service_package")
-
-    def __repr__(self):
-        return f"<ServicePackage {self.name}>"
-
-
-class PackageOrder(db.Model):
-    """One customer-facing package order containing several professional jobs."""
-    __tablename__ = "package_orders"
-
-    id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(
-        db.Integer,
-        db.ForeignKey("customers.id"),
-        nullable=False,
-    )
-    service_package_id = db.Column(
-        db.Integer,
-        db.ForeignKey("service_packages.id"),
-        nullable=False,
-    )
-    total_amount = db.Column(db.Numeric(10, 2), nullable=False)
-    status = db.Column(db.String(30), nullable=False, default="payment_pending")
-    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
-    updated_at = db.Column(
-        db.DateTime,
-        server_default=db.func.now(),
-        onupdate=db.func.now(),
-        nullable=False,
-    )
-
-    customer = db.relationship(
-        "Customer",
-        backref=db.backref("package_orders", lazy=True),
-    )
-    service_package = db.relationship(
-        "ServicePackage",
-        backref=db.backref("orders", lazy=True),
-    )
-    jobs = db.relationship(
-        "ServiceRequest",
-        back_populates="package_order",
-        order_by="ServiceRequest.id",
-    )
-
-    def refresh_status(self):
-        """Derive the customer-facing package state from all child jobs."""
-        if self.status == "cancelled" or not self.jobs:
-            return self.status
-        statuses = [job.status for job in self.jobs]
-        if all(status == "payment_pending" for status in statuses):
-            self.status = "payment_pending"
-        elif all(status == "completed" for status in statuses):
-            self.status = "completed"
-        elif any(status == "completed" for status in statuses):
-            self.status = "partially_completed"
-        elif all(status == "accepted" for status in statuses):
-            self.status = "assigned"
-        elif any(status == "accepted" for status in statuses):
-            self.status = "partially_assigned"
-        else:
-            self.status = "pending"
-        return self.status
-
-    def __repr__(self):
-        return f"<PackageOrder {self.id} - {self.status}>"
 
 class ServiceArea(db.Model):
     """Model representing a service area in the HomeServe application."""
