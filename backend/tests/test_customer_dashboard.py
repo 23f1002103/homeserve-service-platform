@@ -9,6 +9,7 @@ from app.models import (
     Customer,
     Payment,
     ServiceArea,
+    ServiceDemand,
     ServicePricing,
     ServiceRequest,
     ServiceType,
@@ -492,6 +493,73 @@ class CustomerDashboardTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["match_method"], "city_state")
         self.assertEqual(response.get_json()["matched_area"]["city"], "Bengaluru")
+
+    def test_unsupported_service_demand_is_deduplicated_for_admin(self):
+        with self.app.app_context():
+            service_id = db.session.scalar(db.select(ServiceType.id))
+            admin_token = create_access_token(
+                identity="999", additional_claims={"role": "admin"}
+            )
+
+        payload = {
+            "city": "Mysuru",
+            "state": "Karnataka",
+            "pin_code": "570001",
+            "service_type_id": service_id,
+        }
+        for _ in range(2):
+            response = self.client.post(
+                "/api/customer/verify-service-area",
+                headers={"Authorization": f"Bearer {self.token}"},
+                json=payload,
+            )
+            self.assertEqual(response.status_code, 404)
+
+        dashboard = self.client.get(
+            "/api/admin/dashboard",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        ).get_json()
+        demand = dashboard["expansion_demand"][0]
+        self.assertEqual(demand["city"], "Mysuru")
+        self.assertEqual(demand["service"], "Cleaning")
+        self.assertEqual(demand["customer_interest_count"], 1)
+        self.assertEqual(demand["interest_checks"], 2)
+        with self.app.app_context():
+            self.assertEqual(db.session.scalar(db.select(db.func.count(ServiceDemand.id))), 1)
+
+    def test_customer_catalogue_respects_services_enabled_for_city(self):
+        with self.app.app_context():
+            area = db.session.scalar(db.select(ServiceArea))
+            cleaning_id = db.session.scalar(db.select(ServiceType.id))
+            plumbing = ServiceType(name="Plumbing")
+            db.session.add(plumbing)
+            db.session.flush()
+            db.session.add(ServicePricing(service_type_id=plumbing.id, price="650.00"))
+            area.service_types = [plumbing]
+            db.session.commit()
+
+        response = self.client.get(
+            "/api/customer/services",
+            headers={"Authorization": f"Bearer {self.token}"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [service["name"] for service in response.get_json()["services"]],
+            ["Plumbing"],
+        )
+        unavailable = self.client.post(
+            "/api/customer/verify-service-area",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={
+                "city": "Bengaluru",
+                "state": "Karnataka",
+                "pin_code": "560001",
+                "service_type_id": cleaning_id,
+            },
+        )
+        self.assertEqual(unavailable.status_code, 404)
+        self.assertIn("Cleaning", unavailable.get_json()["message"])
 
 
 if __name__ == "__main__":

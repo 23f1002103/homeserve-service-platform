@@ -13,6 +13,7 @@ from ..models import (
     Professional,
     Review,
     ServiceArea,
+    ServiceDemand,
     ServicePricing,
     ServiceRequest,
     ServiceType,
@@ -68,6 +69,10 @@ def serialize_service_area(area, include_counts=False):
         "radius_km": area.radius_km,
         "has_geo_zone": area.has_geo_zone,
         "is_active": area.is_active,
+        "services": [
+            {"id": service.id, "name": service.name}
+            for service in area.service_types
+        ],
     }
     if include_counts:
         result.update(
@@ -76,6 +81,110 @@ def serialize_service_area(area, include_counts=False):
             can_delete=not area.active_professionals and not area.service_requests,
         )
     return result
+
+
+def parse_area_services(data, current_area=None):
+    """Resolve the admin-selected catalogue for one service area."""
+    if "service_type_ids" not in data:
+        if current_area is not None:
+            return list(current_area.service_types), None
+        return db.session.scalars(db.select(ServiceType).order_by(ServiceType.name)).all(), None
+
+    service_type_ids = data.get("service_type_ids")
+    if (
+        not isinstance(service_type_ids, list)
+        or not service_type_ids
+        or any(not isinstance(item, int) for item in service_type_ids)
+    ):
+        return None, "Choose at least one valid service for this city"
+    unique_ids = set(service_type_ids)
+    services = db.session.scalars(
+        db.select(ServiceType).where(ServiceType.id.in_(unique_ids))
+    ).all()
+    if len(services) != len(unique_ids):
+        return None, "One or more selected services do not exist"
+    return services, None
+
+
+def expansion_demand_rows():
+    """Combine unsupported customer interest with registered professional supply."""
+    rows = {}
+    for demand in db.session.scalars(db.select(ServiceDemand)).all():
+        key = (demand.city_key, demand.state_key, demand.service_type_id)
+        row = rows.setdefault(
+            key,
+            {
+                "city": demand.city,
+                "state": demand.state,
+                "service_type_id": demand.service_type_id,
+                "service": demand.service_type.name,
+                "customer_interest_count": 0,
+                "interest_checks": 0,
+                "professional_count": 0,
+                "pending_professional_count": 0,
+            },
+        )
+        row["customer_interest_count"] += 1
+        row["interest_checks"] += demand.request_count
+
+    for professional in db.session.scalars(db.select(Professional)).all():
+        city_key = normalize_city_name(professional.city)
+        state_key = normalize_state_name(professional.state)
+        if not city_key or not state_key:
+            continue
+        key = (city_key, state_key, professional.service_type_id)
+        row = rows.setdefault(
+            key,
+            {
+                "city": professional.city,
+                "state": professional.state,
+                "service_type_id": professional.service_type_id,
+                "service": professional.service_type.name,
+                "customer_interest_count": 0,
+                "interest_checks": 0,
+                "professional_count": 0,
+                "pending_professional_count": 0,
+            },
+        )
+        row["professional_count"] += 1
+        if professional.approval_status == "pending":
+            row["pending_professional_count"] += 1
+
+    areas = db.session.scalars(db.select(ServiceArea)).all()
+    result = []
+    for (city_key, state_key, service_type_id), row in rows.items():
+        area = next(
+            (
+                item
+                for item in areas
+                if normalize_city_name(item.city) == city_key
+                and normalize_state_name(item.state) == state_key
+            ),
+            None,
+        )
+        service_enabled = bool(
+            area
+            and (
+                not area.service_types
+                or any(service.id == service_type_id for service in area.service_types)
+            )
+        )
+        row["area_id"] = area.id if area else None
+        row["city_supported"] = bool(area and area.is_active)
+        row["service_enabled"] = bool(area and area.is_active and service_enabled)
+        if not row["service_enabled"]:
+            result.append(row)
+
+    return sorted(
+        result,
+        key=lambda row: (
+            -row["customer_interest_count"],
+            -row["professional_count"],
+            row["state"].lower(),
+            row["city"].lower(),
+            row["service"].lower(),
+        ),
+    )
 
 
 def professional_rating(professional_id):
@@ -247,6 +356,7 @@ def dashboard():
             "today": str(platform_revenue(today_start, tomorrow_start)),
             "total": str(platform_revenue()),
         },
+        "expansion_demand": expansion_demand_rows(),
     }, 200
 
 
@@ -666,11 +776,13 @@ def delete_service_type(service_type_id):
             ServiceRequest.service_type_id == service_type_id
         )
     )
-    if professional_count or booking_count:
+    area_count = len(service_type.service_areas)
+    demand_count = len(service_type.customer_demands)
+    if professional_count or booking_count or area_count or demand_count:
         return {
             "message": (
                 "This service cannot be deleted because professionals or bookings "
-                "already use it"
+                "already use it, or service areas or demand history depend on it"
             )
         }, 409
 
@@ -709,11 +821,14 @@ def create_service_area():
     state = (data.get("state") or "").strip()
     pin_code = (data.get("pin_code") or "").strip()
     latitude, longitude, radius, zone_error = parse_geo_zone(data)
+    selected_services, services_error = parse_area_services(data)
 
     if not city or not state:
         return {"message": "City and state are required"}, 400
     if zone_error:
         return {"message": zone_error}, 400
+    if services_error:
+        return {"message": services_error}, 400
 
     existing_area = next(
         (
@@ -734,6 +849,7 @@ def create_service_area():
         center_longitude=longitude,
         radius_km=radius,
     )
+    area.service_types = selected_services
     db.session.add(area)
     db.session.commit()
 
@@ -755,11 +871,14 @@ def update_service_area(area_id):
     state = (data.get("state") or "").strip()
     pin_code = (data.get("pin_code") or area.pin_code or "").strip()
     latitude, longitude, radius, zone_error = parse_geo_zone(data, area)
+    selected_services, services_error = parse_area_services(data, area)
 
     if not city or not state:
         return {"message": "City and state are required"}, 400
     if zone_error:
         return {"message": zone_error}, 400
+    if services_error:
+        return {"message": services_error}, 400
 
     existing_area = next(
         (
@@ -778,6 +897,7 @@ def update_service_area(area_id):
     area.center_latitude = latitude
     area.center_longitude = longitude
     area.radius_km = radius
+    area.service_types = selected_services
     db.session.commit()
 
     return {

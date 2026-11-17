@@ -661,6 +661,12 @@ def detect_service_area():
             ),
             None,
         )
+    if (
+        matched_area is not None
+        and matched_area.service_types
+        and profile.service_type not in matched_area.service_types
+    ):
+        matched_area = None
 
     profile.active_service_area = matched_area
     profile.location_verified_at = datetime.now() if matched_area else None

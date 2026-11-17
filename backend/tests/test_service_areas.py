@@ -70,6 +70,30 @@ class ServiceAreaTestCase(unittest.TestCase):
         self.assertTrue(area["has_geo_zone"])
         self.assertEqual(area["radius_km"], 30.0)
 
+    def test_admin_selects_services_available_in_a_city(self):
+        with self.app.app_context():
+            cleaning = ServiceType(name="Cleaning")
+            plumbing = ServiceType(name="Plumbing")
+            db.session.add_all([cleaning, plumbing])
+            db.session.commit()
+            cleaning_id = cleaning.id
+
+        response = self.client.post(
+            "/api/admin/service-areas",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+            json={
+                "city": "Pune",
+                "state": "Maharashtra",
+                "service_type_ids": [cleaning_id],
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.get_json()["service_area"]["services"],
+            [{"id": cleaning_id, "name": "Cleaning"}],
+        )
+
     def test_admin_cannot_create_an_invalid_service_radius(self):
         response = self.client.post(
             "/api/admin/service-areas",

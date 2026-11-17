@@ -6,6 +6,8 @@ import AdminHeader from '../components/AdminHeader.vue'
 import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 
 const areas = ref([])
+const services = ref([])
+const serviceTypeIds = ref([])
 const city = ref('')
 const state = ref('')
 const pinCode = ref('')
@@ -69,10 +71,18 @@ function authHeaders(includeJson = false) {
 }
 
 async function loadAreas(preferredState = '') {
-  const response = await fetch('/api/admin/service-areas', { headers: authHeaders() })
-  const data = await response.json()
+  const [response, servicesResponse] = await Promise.all([
+    fetch('/api/admin/service-areas', { headers: authHeaders() }),
+    fetch('/api/admin/service-types', { headers: authHeaders() }),
+  ])
+  const [data, servicesData] = await Promise.all([response.json(), servicesResponse.json()])
   if (!response.ok) throw new Error(data.message || 'Could not load service areas')
+  if (!servicesResponse.ok) throw new Error(servicesData.message || 'Could not load services')
   areas.value = data.service_areas
+  services.value = servicesData.service_types
+  if (!editingAreaId.value && !serviceTypeIds.value.length) {
+    serviceTypeIds.value = services.value.map(service => service.id)
+  }
   const wantedState = preferredState || selectedState.value
   const matchingState = stateGroups.value.find(group => normalized(group.state) === normalized(wantedState))
   selectedState.value = matchingState?.state || stateGroups.value[0]?.state || ''
@@ -86,6 +96,7 @@ function selectState(stateName) {
   editingAreaId.value = null
   addingNewState.value = false
   errorMessage.value = ''
+  serviceTypeIds.value = services.value.map(service => service.id)
 }
 
 function startNewState() {
@@ -96,6 +107,7 @@ function startNewState() {
   editingAreaId.value = null
   addingNewState.value = true
   errorMessage.value = ''
+  serviceTypeIds.value = services.value.map(service => service.id)
   document.querySelector('.area-city-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
@@ -182,6 +194,7 @@ async function saveArea() {
         center_latitude: centerLatitude.value,
         center_longitude: centerLongitude.value,
         radius_km: Number(radiusKm.value),
+        service_type_ids: serviceTypeIds.value.map(Number),
       }),
     })
     const data = await response.json()
@@ -191,6 +204,7 @@ async function saveArea() {
     resetZone()
     editingAreaId.value = null
     addingNewState.value = false
+    serviceTypeIds.value = services.value.map(service => service.id)
     await loadAreas(savedState)
     state.value = selectedState.value
   } catch (error) {
@@ -209,6 +223,7 @@ function editArea(area) {
   centerLongitude.value = area.center_longitude
   radiusKm.value = area.radius_km || 15
   placeSearch.value = `${area.city}, ${area.state}`
+  serviceTypeIds.value = area.services.map(service => service.id)
   editingAreaId.value = area.id
   addingNewState.value = false
   errorMessage.value = ''
@@ -226,6 +241,7 @@ function cancelEdit() {
   editingAreaId.value = null
   addingNewState.value = false
   errorMessage.value = ''
+  serviceTypeIds.value = services.value.map(service => service.id)
   if (wasAddingNewState && stateGroups.value.length) {
     selectState(stateGroups.value[0].state)
   } else {
@@ -328,6 +344,11 @@ onUnmounted(() => { map?.remove(); map = null })
             <div v-else class="area-form-context"><small>ADDING CITY TO</small><strong>{{ selectedState }}</strong></div>
             <label>City<input v-model.trim="city" required /></label>
             <label>PIN code <small>Optional</small><input v-model.trim="pinCode" inputmode="numeric" /></label>
+            <fieldset class="area-service-picker">
+              <legend>Services available in this city</legend>
+              <label v-for="service in services" :key="service.id"><input v-model="serviceTypeIds" type="checkbox" :value="service.id" /><span>{{ service.name }}</span></label>
+              <small v-if="!serviceTypeIds.length">Choose at least one service before saving.</small>
+            </fieldset>
             <section class="area-zone-editor">
               <div class="area-zone-controls">
                 <div><p class="workbench-label">MAP SERVICE ZONE</p><h3>Set the centre and reach.</h3><p>Search once or click anywhere on the map, then choose how far HomeServe operates from that point.</p></div>
@@ -337,12 +358,12 @@ onUnmounted(() => { map?.remove(); map = null })
               </div>
               <div ref="mapElement" class="area-zone-map" aria-label="Click the map to choose the service area centre"></div>
             </section>
-            <div class="service-form-actions"><button type="submit" :disabled="creating">{{ creating ? 'Saving…' : editingAreaId ? 'Save changes' : addingNewState ? 'Create state and city' : 'Add city' }}</button><button v-if="editingAreaId || addingNewState" type="button" class="service-form-cancel" :disabled="creating" @click="cancelEdit">Cancel</button></div>
+            <div class="service-form-actions"><button type="submit" :disabled="creating || !serviceTypeIds.length">{{ creating ? 'Saving…' : editingAreaId ? 'Save changes' : addingNewState ? 'Create state and city' : 'Add city' }}</button><button v-if="editingAreaId || addingNewState" type="button" class="service-form-cancel" :disabled="creating" @click="cancelEdit">Cancel</button></div>
           </form>
 
           <div v-if="activeGroup && !addingNewState" class="area-city-list">
             <div class="area-city-list-tools"><label class="list-search"><span>⌕</span><input v-model.trim="searchQuery" type="search" placeholder="Search cities in this state" aria-label="Search cities" /><button v-if="searchQuery" type="button" @click="searchQuery = ''">Clear</button></label><span>{{ filteredCities.length }} result{{ filteredCities.length === 1 ? '' : 's' }}</span></div>
-            <article v-for="area in visibleCities" :key="area.id" :class="{ 'is-inactive': !area.is_active }"><div><span class="area-status" :class="area.is_active ? 'is-active' : 'is-paused'">{{ area.is_active ? 'Active' : 'Inactive' }}</span><strong>{{ area.city }}</strong><small>{{ area.professional_count }} connected professional(s) · {{ area.demand_count }} booking(s) · {{ area.has_geo_zone ? `${area.radius_km} km GPS zone` : 'GPS zone not set' }}</small></div><div><button type="button" @click="editArea(area)">Edit</button><button type="button" class="area-availability-button" :disabled="availabilityBusyId === area.id" @click="pendingAvailabilityArea = area">{{ area.is_active ? 'Deactivate' : 'Activate' }}</button><button v-if="area.can_delete" type="button" class="area-delete-button" :disabled="deletingAreaId === area.id" @click="pendingDeleteArea = area">{{ deletingAreaId === area.id ? 'Deleting…' : 'Delete permanently' }}</button></div></article>
+            <article v-for="area in visibleCities" :key="area.id" :class="{ 'is-inactive': !area.is_active }"><div><span class="area-status" :class="area.is_active ? 'is-active' : 'is-paused'">{{ area.is_active ? 'Active' : 'Inactive' }}</span><strong>{{ area.city }}</strong><small>{{ area.professional_count }} connected professional(s) · {{ area.demand_count }} booking(s) · {{ area.services.map(service => service.name).join(', ') || 'All legacy services' }} · {{ area.has_geo_zone ? `${area.radius_km} km GPS zone` : 'GPS zone not set' }}</small></div><div><button type="button" @click="editArea(area)">Edit</button><button type="button" class="area-availability-button" :disabled="availabilityBusyId === area.id" @click="pendingAvailabilityArea = area">{{ area.is_active ? 'Deactivate' : 'Activate' }}</button><button v-if="area.can_delete" type="button" class="area-delete-button" :disabled="deletingAreaId === area.id" @click="pendingDeleteArea = area">{{ deletingAreaId === area.id ? 'Deleting…' : 'Delete permanently' }}</button></div></article>
             <p v-if="!filteredCities.length">No cities match this search.</p>
             <nav v-if="pageCount > 1" class="area-pagination" aria-label="City pages"><button type="button" :disabled="currentPage === 1" @click="currentPage--">Previous</button><span>{{ currentPage }} / {{ pageCount }}</span><button type="button" :disabled="currentPage === pageCount" @click="currentPage++">Next</button></nav>
           </div>

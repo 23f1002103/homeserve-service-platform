@@ -12,6 +12,8 @@ from ..location import (
     find_area_for_coordinates,
     get_address_from_coordinates,
     location_matches_area,
+    normalize_city_name,
+    normalize_state_name,
 )
 from ..models import (
     Customer,
@@ -19,6 +21,7 @@ from ..models import (
     Payment,
     Review,
     ServiceArea,
+    ServiceDemand,
     ServiceRequest,
     ServiceType,
 )
@@ -46,6 +49,47 @@ def find_service_area(location, latitude=None, longitude=None):
             return area, "city_state"
 
     return None, None
+
+
+def area_supports_service(area, service_type):
+    """Treat empty legacy catalogues as unrestricted until an admin configures them."""
+    return not area.service_types or service_type in area.service_types
+
+
+def record_service_demand(user_id, service_type_id, location):
+    """Record one customer's repeated interest without inflating unique demand."""
+    if not isinstance(service_type_id, int):
+        return
+    service_type = db.session.get(ServiceType, service_type_id)
+    city = (location.get("city") or "").strip()
+    state = (location.get("state") or "").strip()
+    city_key = normalize_city_name(city)
+    state_key = normalize_state_name(state)
+    if service_type is None or not city_key or not state_key:
+        return
+
+    demand = db.session.scalar(
+        db.select(ServiceDemand).where(
+            ServiceDemand.user_id == user_id,
+            ServiceDemand.service_type_id == service_type.id,
+            ServiceDemand.city_key == city_key,
+            ServiceDemand.state_key == state_key,
+        )
+    )
+    if demand is None:
+        demand = ServiceDemand(
+            user_id=user_id,
+            service_type_id=service_type.id,
+            city=city,
+            state=state,
+            city_key=city_key,
+            state_key=state_key,
+        )
+        db.session.add(demand)
+    else:
+        demand.request_count += 1
+        demand.last_requested_at = datetime.now()
+    db.session.commit()
 
 
 @customer.get("/dashboard")
@@ -217,6 +261,8 @@ def services():
     service_list = db.session.scalars(
         db.select(ServiceType).order_by(ServiceType.name)
     ).all()
+    if customer_area is not None and customer_area.service_types:
+        service_list = list(customer_area.service_types)
     return {
         "service_area_available": customer_area is not None,
         "customer_area": {
@@ -255,6 +301,23 @@ def detect_service_area():
         return {"message": "Location lookup is temporarily unavailable"}, 503
 
     matched_area, match_method = find_service_area(location, latitude, longitude)
+    service_type_id = data.get("service_type_id")
+    if matched_area is None:
+        record_service_demand(
+            int(get_jwt_identity()),
+            service_type_id,
+            location,
+        )
+    elif isinstance(service_type_id, int):
+        service_type = db.session.get(ServiceType, service_type_id)
+        if service_type is not None and not area_supports_service(matched_area, service_type):
+            record_service_demand(
+                int(get_jwt_identity()),
+                service_type_id,
+                location,
+            )
+            matched_area = None
+            match_method = None
     return {
         "detected_location": location,
         "matched_area": (
@@ -278,6 +341,7 @@ def verify_service_area():
     city = (data.get("city") or "").strip()
     state = (data.get("state") or "").strip()
     pin_code = (data.get("pin_code") or "").strip()
+    service_type_id = data.get("service_type_id")
     if not city or not state:
         return {"message": "Enter the service address city and state"}, 400
 
@@ -285,10 +349,28 @@ def verify_service_area():
         {"city": city, "state": state, "pin_code": pin_code}
     )
     if matched_area is None:
+        record_service_demand(
+            int(get_jwt_identity()),
+            service_type_id,
+            {"city": city, "state": state},
+        )
         return {
             "message": f"HomeServe is not available in {city}, {state} yet",
             "matched_area": None,
         }, 404
+
+    if isinstance(service_type_id, int):
+        service_type = db.session.get(ServiceType, service_type_id)
+        if service_type is not None and not area_supports_service(matched_area, service_type):
+            record_service_demand(
+                int(get_jwt_identity()),
+                service_type_id,
+                {"city": city, "state": state},
+            )
+            return {
+                "message": f"{service_type.name} is not available in {city}, {state} yet",
+                "matched_area": None,
+            }, 404
 
     return {
         "message": "Service area verified",
@@ -403,7 +485,21 @@ def create_booking():
             longitude,
         )
     if service_area is None:
+        record_service_demand(
+            user_id,
+            service_type.id,
+            {"city": service_city, "state": service_state},
+        )
         return {"message": "HomeServe is not available at this location"}, 400
+    if not area_supports_service(service_area, service_type):
+        record_service_demand(
+            user_id,
+            service_type.id,
+            {"city": service_city, "state": service_state},
+        )
+        return {
+            "message": f"{service_type.name} is not available in this city yet"
+        }, 409
     if not service_type.pricing:
         return {"message": "This service does not have a price yet"}, 400
 

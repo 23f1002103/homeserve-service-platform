@@ -168,7 +168,12 @@ function detectCurrentLocation() {
         const response = await fetch('/api/customer/detect-service-area', {
           method: 'POST',
           headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ latitude, longitude, accuracy: position.coords.accuracy }),
+          body: JSON.stringify({
+            latitude,
+            longitude,
+            accuracy: position.coords.accuracy,
+            service_type_id: service.value.id,
+          }),
         })
         const data = await response.json()
         if (!response.ok) throw new Error(data.message || 'Could not verify your location')
@@ -236,6 +241,7 @@ async function verifyManualLocation() {
         city: serviceCity.value,
         state: serviceState.value,
         pin_code: servicePinCode.value,
+        service_type_id: service.value.id,
       }),
     })
     const data = await response.json()

@@ -2,6 +2,23 @@
 from .database import db
 
 
+service_area_services = db.Table(
+    "service_area_services",
+    db.Column(
+        "service_area_id",
+        db.Integer,
+        db.ForeignKey("service_areas.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    db.Column(
+        "service_type_id",
+        db.Integer,
+        db.ForeignKey("service_types.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
 class User(db.Model):
     """Model representing a user in the HomeServe application."""
     __tablename__ = 'users'
@@ -260,9 +277,58 @@ class ServiceArea(db.Model):
         "Professional",
         back_populates="active_service_area",
     )
+    service_types = db.relationship(
+        "ServiceType",
+        secondary=service_area_services,
+        backref=db.backref("service_areas", lazy=True),
+        order_by="ServiceType.name",
+    )
 
     def __repr__(self):
         return f'<ServiceArea {self.city}, {self.state} - PinCode: {self.pin_code}>'
+
+
+class ServiceDemand(db.Model):
+    """Record unique customer interest in a service outside the current network."""
+    __tablename__ = "service_demands"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id",
+            "service_type_id",
+            "city_key",
+            "state_key",
+            name="uq_service_demand_user_service_location",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    service_type_id = db.Column(
+        db.Integer,
+        db.ForeignKey("service_types.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    city = db.Column(db.String(100), nullable=False)
+    state = db.Column(db.String(100), nullable=False)
+    city_key = db.Column(db.String(100), nullable=False)
+    state_key = db.Column(db.String(100), nullable=False)
+    request_count = db.Column(db.Integer, nullable=False, default=1)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+    last_requested_at = db.Column(
+        db.DateTime,
+        server_default=db.func.now(),
+        nullable=False,
+    )
+
+    user = db.relationship("User", backref=db.backref("service_demands", lazy=True))
+    service_type = db.relationship(
+        "ServiceType",
+        backref=db.backref("customer_demands", lazy=True),
+    )
 
 class ServicePricing(db.Model):
     """Model representing service pricing in the HomeServe application."""

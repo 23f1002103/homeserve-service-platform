@@ -59,6 +59,19 @@ onMounted(loadDashboard)
       </section>
       <section v-else-if="loading || !errorMessage" class="dashboard-loading">Reading live platform data…</section>
 
+      <section v-if="dashboard" class="expansion-demand-panel">
+        <header><div><p class="workbench-label">EXPANSION DEMAND</p><h2>Where HomeServe should operate next</h2><p>Customer interest is combined with professionals who registered from the same city and service.</p></div><RouterLink to="/admin/service-areas">Configure cities →</RouterLink></header>
+        <div v-if="dashboard.expansion_demand.length" class="expansion-demand-list">
+          <article v-for="item in dashboard.expansion_demand.slice(0, 8)" :key="`${item.state}-${item.city}-${item.service_type_id}`">
+            <div><strong>{{ item.city }}, {{ item.state }}</strong><small>{{ item.service }}</small></div>
+            <span><small>CUSTOMERS</small><strong>{{ item.customer_interest_count }}</strong></span>
+            <span><small>PROFESSIONALS</small><strong>{{ item.professional_count }}</strong></span>
+            <b>{{ item.city_supported ? 'Enable service' : 'New city opportunity' }}</b>
+          </article>
+        </div>
+        <p v-else class="records-empty">No unsupported city or service demand has been recorded yet.</p>
+      </section>
+
       <section v-if="dashboard" class="admin-revenue-strip">
         <div><p class="workbench-label">PLATFORM REVENUE</p><h2>HomeServe commission</h2><small>This is the platform's share from completed services—not the admin's personal income.</small></div>
         <div><small>REVENUE TODAY</small><strong>₹{{ dashboard.revenue.today }}</strong></div>
